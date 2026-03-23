@@ -24,13 +24,25 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
-    const textResponse = data.candidates[0].content.parts[0].text;
-    
-    const parsedData = JSON.parse(textResponse);
-    res.status(200).json(parsedData);
+
+    // בדיקה חכמה: אם גוגל דחה את הבקשה (למשל מפתח שגוי)
+    if (!response.ok || data.error) {
+      console.error("Google API Error:", data.error);
+      return res.status(500).json({ error: 'Google API error', details: data.error });
+    }
+
+    // אם הכל תקין, שולפים את המידע
+    if (data.candidates && data.candidates[0]) {
+      const textResponse = data.candidates[0].content.parts[0].text;
+      const parsedData = JSON.parse(textResponse);
+      return res.status(200).json(parsedData);
+    } else {
+       console.error("Unexpected response format:", data);
+       return res.status(500).json({ error: 'Unexpected response from Gemini' });
+    }
 
   } catch (error) {
-    console.error('Error with Gemini:', error);
+    console.error('Server execution error:', error);
     res.status(500).json({ error: 'Failed to process request' });
   }
 }
