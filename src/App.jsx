@@ -14,6 +14,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState(() => loadFromLocal('lifeos_activeTab', 'dashboard'));
   const [energyLevel, setEnergyLevel] = useState(() => loadFromLocal('lifeos_energyLevel', 'medium'));
   const [tasks, setTasks] = useState(() => loadFromLocal('lifeos_tasks', []));
+  const [transactions, setTransactions] = useState(() => loadFromLocal('lifeos_transactions', []));
   const [newTask, setNewTask] = useState('');
   const [brainDump, setBrainDump] = useState(() => loadFromLocal('lifeos_brainDump', ''));
   const [timeLeft, setTimeLeft] = useState(() => loadFromLocal('lifeos_timeLeft', 25 * 60));
@@ -24,9 +25,10 @@ export default function App() {
     window.localStorage.setItem('lifeos_activeTab', JSON.stringify(activeTab));
     window.localStorage.setItem('lifeos_energyLevel', JSON.stringify(energyLevel));
     window.localStorage.setItem('lifeos_tasks', JSON.stringify(tasks));
+    window.localStorage.setItem('lifeos_transactions', JSON.stringify(transactions));
     window.localStorage.setItem('lifeos_brainDump', JSON.stringify(brainDump));
     window.localStorage.setItem('lifeos_timeLeft', JSON.stringify(timeLeft));
-  }, [activeTab, energyLevel, tasks, brainDump, timeLeft]);
+  }, [activeTab, energyLevel, tasks, transactions, brainDump, timeLeft]);
 
   useEffect(() => {
     const clock = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -91,10 +93,12 @@ export default function App() {
             addTask={addTask}
             toggleTask={toggleTask}
             deleteTask={deleteTask}
+            energyLevel={energyLevel}
+            setEnergyLevel={setEnergyLevel}
           />
         )}
 
-        {activeTab === 'finance' && <FinanceSection />}
+        {activeTab === 'finance' && <FinanceSection transactions={transactions} />}
         {activeTab === 'schedule' && <ScheduleSection />}
         {activeTab === 'vision' && <VisionSection />}
         {activeTab === 'skills' && <SkillsSection />}
