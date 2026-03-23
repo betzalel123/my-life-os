@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import {
   Wallet, Calendar, Target, Sparkles, Gift, Lightbulb,
   Flame, Coffee, Plus, Circle, CheckCircle2, Trash2,
-  Play, Pause, Dices, RefreshCw, Smile, Music, Zap, AlertTriangle
+  Play, Pause, Dices, RefreshCw, Smile, Music, Zap, AlertTriangle, Loader2
 } from 'lucide-react';
 
 const IconMap = { Sparkles, Gift, Lightbulb, Coffee, Flame, Smile, Music, Zap };
 
 export default function DashboardSection({
-  energyLevel, setEnergyLevel, tasks, newTask, setNewTask,
+  energyLevel, setEnergyLevel, tasks, setTasks, newTask, setNewTask,
   addTask, toggleTask, deleteTask, brainDump, setBrainDump,
   timeLeft, isTimerRunning, setIsTimerRunning
 }) {
@@ -18,7 +18,55 @@ export default function DashboardSection({
     { title: 'שרבוט יצירתי ל־5 דקות', desc: 'קחי דף ועט ותעשי קווים בלי לחשוב יותר מדי.', iconName: 'Lightbulb', accent: 'text-amber-400' }
   ]);
   const [isLoadingGemini, setIsLoadingGemini] = useState(false);
+  const [isAddingTask, setIsAddingTask] = useState(false);
   const [geminiError, setGeminiError] = useState(false);
+
+  // פונקציה חכמה להוספת משימה עם ניתוח אנרגיה
+  const handleSmartAddTask = async (e) => {
+    e.preventDefault();
+    if (!newTask.trim()) return;
+
+    setIsAddingTask(true);
+    
+    const energyPrompt = `
+      נתח את המשימה הבאה: "${newTask}"
+      קבע מהי רמת האנרגיה הנדרשת עבורה מתוך האפשרויות הבאות בלבד: "high", "medium", "low".
+      - "high": משימות שדורשות ריכוז עמוק, למידה קשה, או מאמץ פיזי/מנטלי משמעותי.
+      - "medium": משימות יומיומיות, עבודה שגרתית, סידורים רגילים.
+      - "low": משימות קלילות, טכניות, אוטומטיות או כאלה שאפשר לעשות כשעייפים.
+      
+      תחזיר תשובה בפורמט JSON בלבד:
+      { "energy": "level_here" }
+    `;
+
+    try {
+      const response = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: energyPrompt })
+      });
+
+      const data = await response.json();
+      const detectedEnergy = data.energy || 'medium'; // ברירת מחדל אם נכשל
+
+      const taskObj = {
+        id: Date.now(),
+        text: newTask,
+        completed: false,
+        energyRequired: detectedEnergy
+      };
+
+      setTasks([...tasks, taskObj]);
+      setNewTask('');
+      setEnergyLevel(detectedEnergy); // מעביר את המשתמש אוטומטית לרמת האנרגיה של המשימה החדשה
+    } catch (error) {
+      console.error("Failed to analyze task energy:", error);
+      // אם ה-AI נכשל, פשוט מוסיפים כ-medium כדי לא לתקוע את המשתמש
+      addTask(e); 
+    } finally {
+      setIsAddingTask(false);
+    }
+  };
 
   const refreshDopamineMenu = async () => {
     setIsLoadingGemini(true);
@@ -43,8 +91,6 @@ export default function DashboardSection({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: dopaminePrompt })
       });
-      
-      if (!response.ok) throw new Error('API failed');
       
       const data = await response.json();
       if (data && data.options) {
@@ -121,16 +167,9 @@ export default function DashboardSection({
             <h2 className="text-[26px] font-black text-slate-800">תפריט דופמין</h2>
           </div>
 
-          {geminiError && (
-            <div className="mb-4 text-xs font-bold text-rose-600 bg-rose-50 p-3 rounded-xl flex items-center gap-2 border border-rose-100">
-              <AlertTriangle size={16} /> שגיאה בחיבור. ודא שהגדרת את המפתח ב-Vercel.
-            </div>
-          )}
-
           <div className="space-y-4">
             {dopamineOptions.map((card, index) => {
               const IconComponent = IconMap[card.iconName] || Sparkles; 
-              
               return (
                 <div key={index} className="rounded-[1.6rem] border border-slate-200 bg-slate-50/60 p-4 flex items-start gap-4 hover:bg-white hover:shadow-sm transition-all cursor-pointer">
                   <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center shrink-0 shadow-sm border border-slate-100">
@@ -174,7 +213,7 @@ export default function DashboardSection({
             </h2>
 
             <div className="flex items-center bg-slate-50 rounded-[2rem] border border-slate-200 p-2 gap-3 mt-2 xl:mt-0">
-              <span className="text-slate-400 font-bold text-sm px-2 whitespace-nowrap">כמה אנרגיה יש לי עכשיו?</span>
+              <span className="text-slate-400 font-bold text-sm px-2 whitespace-nowrap">רמת אנרגיה נוכחית</span>
               <div className="flex items-center bg-slate-100 rounded-[1.5rem] p-1 gap-1">
                 {[
                   { key: 'high', label: 'גבוהה' },
@@ -195,26 +234,28 @@ export default function DashboardSection({
             </div>
           </div>
 
-          <form onSubmit={addTask} className="relative mb-6">
+          <form onSubmit={handleSmartAddTask} className="relative mb-6">
             <input
               type="text"
               value={newTask}
               onChange={(e) => setNewTask(e.target.value)}
-              placeholder="משהו חדש לעשות? כתבו כאן..."
+              placeholder="כתבי משימה... (הבינה המלאכותית תסווג אותה עבורך)"
               className="w-full h-[76px] bg-white border-2 border-dashed border-slate-200 rounded-[2rem] py-4 pr-8 pl-24 text-xl outline-none focus:border-indigo-300 transition-all text-slate-700 placeholder:text-slate-300"
+              disabled={isAddingTask}
             />
             <button
               type="submit"
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-14 h-14 bg-indigo-600 hover:bg-indigo-500 transition-colors text-white rounded-2xl flex items-center justify-center shadow-lg"
+              disabled={isAddingTask}
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-14 h-14 bg-indigo-600 hover:bg-indigo-500 transition-colors text-white rounded-2xl flex items-center justify-center shadow-lg disabled:opacity-50"
             >
-              <Plus size={24} />
+              {isAddingTask ? <Loader2 size={24} className="animate-spin" /> : <Plus size={24} />}
             </button>
           </form>
 
           {filteredTasks.length === 0 ? (
             <div className="h-[160px] rounded-[2.2rem] border-2 border-dashed border-slate-200 bg-slate-50/40 flex flex-col items-center justify-center text-slate-300 italic text-[22px] font-black gap-2">
               <Coffee size={32} className="opacity-30" />
-              אין משימות לרמת האנרגיה הזו. אולי הזמן לנוח? ☕
+              אין משימות לרמה הזו.
             </div>
           ) : (
             <div className="space-y-3">
