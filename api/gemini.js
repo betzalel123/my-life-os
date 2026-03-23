@@ -14,14 +14,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // שימוש במודל 1.0-pro - הכי נפוץ וסביר שקיים בכל חשבון ב-v1
+    const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.0-pro:generateContent?key=${apiKey}`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }]
-        // הסרנו את ה-generationConfig שגרם לשגיאה
       })
     });
 
@@ -29,13 +29,19 @@ export default async function handler(req, res) {
 
     if (!response.ok || data.error) {
       console.error("Google API Error:", JSON.stringify(data.error, null, 2));
+      
+      // אם המודל לא נמצא, ננסה לפחות להדפיס הצעה לפתרון בלוגים
+      if (data.error?.status === "NOT_FOUND") {
+        console.log("TIP: Try changing the model name in api/gemini.js to one of the supported models in your region.");
+      }
+      
       return res.status(response.status || 500).json({ error: data.error?.message || 'API Error' });
     }
 
     if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
       let textResponse = data.candidates[0].content.parts[0].text;
       
-      // פונקציית ניקוי: אם ג'מיני מחזיר ```json ... ``` אנחנו מנקים את זה
+      // ניקוי תגיות Markdown של JSON אם קיימות
       const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         textResponse = jsonMatch[0];
