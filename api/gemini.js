@@ -14,7 +14,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -25,13 +25,11 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    // בדיקה חכמה: אם גוגל דחה את הבקשה (למשל מפתח שגוי)
     if (!response.ok || data.error) {
       console.error("Google API Error:", data.error);
       return res.status(500).json({ error: 'Google API error', details: data.error });
     }
 
-    // אם הכל תקין, שולפים את המידע
     if (data.candidates && data.candidates[0]) {
       const textResponse = data.candidates[0].content.parts[0].text;
       const parsedData = JSON.parse(textResponse);
