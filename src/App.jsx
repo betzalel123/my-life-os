@@ -11,20 +11,12 @@ import ToolsSection from './sections/ToolsSection';
 import { loadFromLocal } from './lib/storage';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState(() =>
-    loadFromLocal('lifeos_activeTab', 'dashboard')
-  );
-  const [energyLevel, setEnergyLevel] = useState(() =>
-    loadFromLocal('lifeos_energyLevel', 'medium')
-  );
+  const [activeTab, setActiveTab] = useState(() => loadFromLocal('lifeos_activeTab', 'dashboard'));
+  const [energyLevel, setEnergyLevel] = useState(() => loadFromLocal('lifeos_energyLevel', 'medium'));
   const [tasks, setTasks] = useState(() => loadFromLocal('lifeos_tasks', []));
   const [newTask, setNewTask] = useState('');
-  const [brainDump, setBrainDump] = useState(() =>
-    loadFromLocal('lifeos_brainDump', '')
-  );
-  const [timeLeft, setTimeLeft] = useState(() =>
-    loadFromLocal('lifeos_timeLeft', 25 * 60)
-  );
+  const [brainDump, setBrainDump] = useState(() => loadFromLocal('lifeos_brainDump', ''));
+  const [timeLeft, setTimeLeft] = useState(() => loadFromLocal('lifeos_timeLeft', 25 * 60));
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -49,43 +41,24 @@ export default function App() {
     return () => clearInterval(interval);
   }, [isTimerRunning, timeLeft]);
 
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
   const addTask = (e) => {
     e.preventDefault();
     if (!newTask.trim()) return;
 
     setTasks((prev) => [
-      {
-        id: Date.now(),
-        text: newTask.trim(),
-        completed: false,
-        energyRequired: energyLevel,
-      },
+      { id: Date.now(), text: newTask.trim(), completed: false, energyRequired: energyLevel },
       ...prev,
     ]);
     setNewTask('');
   };
 
   const toggleTask = (id) => {
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.id === id ? { ...task, completed: !task.completed } : task
-      )
-    );
+    setTasks((prev) => prev.map((task) => task.id === id ? { ...task, completed: !task.completed } : task));
   };
 
   const deleteTask = (id) => {
     setTasks((prev) => prev.filter((task) => task.id !== id));
   };
-
-  const filteredTasks = tasks.filter(
-    (task) => !task.completed && task.energyRequired === energyLevel
-  );
 
   return (
     <div className="min-h-screen bg-[#f4f7fb] text-slate-900 font-sans pb-32" dir="rtl">
@@ -97,13 +70,12 @@ export default function App() {
             timeLeft={timeLeft}
             isTimerRunning={isTimerRunning}
             setIsTimerRunning={setIsTimerRunning}
-            formatTime={formatTime}
             energyLevel={energyLevel}
             setEnergyLevel={setEnergyLevel}
+            tasks={tasks} 
             newTask={newTask}
             setNewTask={setNewTask}
             addTask={addTask}
-            filteredTasks={filteredTasks}
             toggleTask={toggleTask}
             deleteTask={deleteTask}
             brainDump={brainDump}
