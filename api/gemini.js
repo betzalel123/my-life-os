@@ -14,8 +14,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    // שימוש במודל 1.0-pro - הכי נפוץ וסביר שקיים בכל חשבון ב-v1
-    const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.0-pro:generateContent?key=${apiKey}`;
+    // הפתרון הסופי: משתמשים בכתובת הכי בסיסית של gemini-pro ללא מספר גרסה
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -28,20 +28,14 @@ export default async function handler(req, res) {
     const data = await response.json();
 
     if (!response.ok || data.error) {
-      console.error("Google API Error:", JSON.stringify(data.error, null, 2));
-      
-      // אם המודל לא נמצא, ננסה לפחות להדפיס הצעה לפתרון בלוגים
-      if (data.error?.status === "NOT_FOUND") {
-        console.log("TIP: Try changing the model name in api/gemini.js to one of the supported models in your region.");
-      }
-      
+      console.error("Final Attempt Error:", JSON.stringify(data.error, null, 2));
       return res.status(response.status || 500).json({ error: data.error?.message || 'API Error' });
     }
 
     if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
       let textResponse = data.candidates[0].content.parts[0].text;
       
-      // ניקוי תגיות Markdown של JSON אם קיימות
+      // ניקוי JSON במידה והמודל מוסיף תגיות
       const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         textResponse = jsonMatch[0];
@@ -54,7 +48,7 @@ export default async function handler(req, res) {
     }
 
   } catch (error) {
-    console.error('Server Error:', error);
+    console.error('Final Server Error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
