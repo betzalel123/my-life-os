@@ -20,11 +20,8 @@ export default async function handler(req, res) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          // זה התיקון הקטן - הסרת הקו התחתון לפי דרישת ה-API היציב
-          responseMimeType: "application/json"
-        }
+        contents: [{ parts: [{ text: prompt }] }]
+        // הסרנו את ה-generationConfig שגרם לשגיאה
       })
     });
 
@@ -36,7 +33,14 @@ export default async function handler(req, res) {
     }
 
     if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
-      const textResponse = data.candidates[0].content.parts[0].text;
+      let textResponse = data.candidates[0].content.parts[0].text;
+      
+      // פונקציית ניקוי: אם ג'מיני מחזיר ```json ... ``` אנחנו מנקים את זה
+      const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        textResponse = jsonMatch[0];
+      }
+
       const parsedData = JSON.parse(textResponse);
       return res.status(200).json(parsedData);
     } else {
