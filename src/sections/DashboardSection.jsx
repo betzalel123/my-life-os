@@ -1,38 +1,76 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Wallet, Calendar, Target, Sparkles, Gift, Lightbulb,
   Flame, Coffee, Plus, Circle, CheckCircle2, Trash2,
-  Play, Pause, Dices
+  Play, Pause, Dices, RefreshCw, Smile, Music, Zap, AlertTriangle
 } from 'lucide-react';
+
+const IconMap = { Sparkles, Gift, Lightbulb, Coffee, Flame, Smile, Music, Zap };
 
 export default function DashboardSection({
   energyLevel, setEnergyLevel, tasks, newTask, setNewTask,
   addTask, toggleTask, deleteTask, brainDump, setBrainDump,
   timeLeft, isTimerRunning, setIsTimerRunning
 }) {
+  const [dopamineOptions, setDopamineOptions] = useState([
+    { title: 'ריקוד ספונטני לשיר אחד', desc: 'בחרי שיר שאת אוהבת ופשוט תזיזי את הגוף למשך 3 דקות.', iconName: 'Music', accent: 'text-rose-400' },
+    { title: 'סידור מיקרו של משטח קטן', desc: 'פני רק פינה קטנה אחת — שידה או חלק קטן מהשולחן.', iconName: 'Gift', accent: 'text-indigo-400' },
+    { title: 'שרבוט יצירתי ל־5 דקות', desc: 'קחי דף ועט ותעשי קווים בלי לחשוב יותר מדי.', iconName: 'Lightbulb', accent: 'text-amber-400' }
+  ]);
+  const [isLoadingGemini, setIsLoadingGemini] = useState(false);
+  const [geminiError, setGeminiError] = useState(false);
+
+  const refreshDopamineMenu = async () => {
+    setIsLoadingGemini(true);
+    setGeminiError(false);
+    
+    const dopaminePrompt = `
+      תייצר 3 רעיונות קצרים, יצירתיים ופשוטים לפעולות שמשחררות דופמין (Dopamine Menu) לאדם שצריך הפסקה קצרה מהעבודה או הלימודים.
+      חובה קריטית: כל התוכן (הכותרות והתיאורים) חייב להיות כתוב אך ורק בשפה העברית!
+      תחזיר את התשובה בפורמט JSON בלבד, שייראה בדיוק במבנה הזה (אובייקט עם מערך שנקרא options):
+      {
+        "options": [
+          { "title": "כותרת קצרה בעברית", "desc": "תיאור של שורה אחת בעברית", "iconName": "Sparkles", "accent": "text-rose-400" }
+        ]
+      }
+      שמות האייקונים האפשריים: Sparkles, Gift, Lightbulb, Coffee, Flame, Smile, Music, Zap.
+      צבעי אקסנט אפשריים: text-rose-400, text-indigo-400, text-amber-400, text-emerald-400.
+    `;
+
+    try {
+      const response = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: dopaminePrompt })
+      });
+      
+      if (!response.ok) throw new Error('API failed');
+      
+      const data = await response.json();
+      if (data && data.options) {
+        setDopamineOptions(data.options);
+      }
+    } catch (error) {
+      console.error(error);
+      setGeminiError(true);
+    } finally {
+      setIsLoadingGemini(false);
+    }
+  };
+
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const filteredTasks = tasks.filter(
-    (task) => !task.completed && task.energyRequired === energyLevel
-  );
-
-  const dopamineCards = [
-    { title: 'ריקוד ספונטני לשיר אחד', desc: 'בחרו שיר שאתם אוהבים ופשוט תזיזו את הגוף במשך 3 דקות.', icon: Sparkles, accent: 'text-rose-400' },
-    { title: 'סידור מיקרו של משטח קטן', desc: 'פנו רק פינה קטנה אחת — שידה, מדף קטן או חלק מהשולחן.', icon: Gift, accent: 'text-indigo-400' },
-    { title: 'שרבוט יצירתי ל־5 דקות', desc: 'קחו דף ועט ותעשו קווים או צורות בלי לחשוב יותר מדי.', icon: Lightbulb, accent: 'text-amber-400' },
-  ];
+  const filteredTasks = tasks.filter((task) => !task.completed && task.energyRequired === energyLevel);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
       
-      {/* --- עמודה ימנית (צרה - 4/12) --- */}
       <div className="lg:col-span-4 space-y-8">
         
-        {/* תקציב מהיר */}
         <section className="bg-white rounded-[2.5rem] p-7 shadow-sm border border-slate-200/60 relative overflow-hidden">
           <div className="absolute top-0 left-0 h-full w-1.5 bg-emerald-400" />
           <div className="flex items-center justify-between mb-6">
@@ -45,7 +83,7 @@ export default function DashboardSection({
               <div className="text-[36px] xl:text-[42px] font-black text-rose-600 leading-none">₪0</div>
             </div>
             <div className="bg-emerald-50 rounded-[1.8rem] p-5 text-center">
-              <div className="text-emerald-600 text-sm font-black mb-1">נשאר לשימוש</div>
+              <div className="text-emerald-600 text-sm font-black mb-1">נשאר</div>
               <div className="text-[36px] xl:text-[42px] font-black text-emerald-700 leading-none">₪0</div>
             </div>
           </div>
@@ -54,7 +92,6 @@ export default function DashboardSection({
           </button>
         </section>
 
-        {/* לו"ז קרוב */}
         <section className="bg-white rounded-[2.5rem] p-7 shadow-sm border border-slate-200/60">
           <div className="flex items-center justify-between mb-6">
             <Calendar className="text-indigo-500" size={24} />
@@ -71,21 +108,33 @@ export default function DashboardSection({
           </div>
         </section>
 
-        {/* תפריט דופמין */}
-        <section className="bg-white rounded-[2.5rem] p-7 shadow-sm border border-slate-200/60">
+        <section className="bg-white rounded-[2.5rem] p-7 shadow-sm border border-slate-200/60 min-h-[400px]">
           <div className="flex items-center justify-between mb-6">
-            <div className="px-4 py-2 rounded-xl bg-rose-50 text-rose-500 font-black text-sm flex items-center gap-2 cursor-pointer hover:bg-rose-100 transition-colors">
-              רענן <Flame size={16} />
-            </div>
+            <button 
+              onClick={refreshDopamineMenu}
+              disabled={isLoadingGemini}
+              className={`px-4 py-2 rounded-xl bg-rose-50 text-rose-500 font-black text-sm flex items-center gap-2 transition-all ${isLoadingGemini ? 'opacity-50 cursor-not-allowed' : 'hover:bg-rose-100 shadow-sm cursor-pointer'}`}
+            >
+              {isLoadingGemini ? <RefreshCw size={16} className="animate-spin" /> : <Flame size={16} />}
+              {isLoadingGemini ? 'מייצר...' : 'רענן'}
+            </button>
             <h2 className="text-[26px] font-black text-slate-800">תפריט דופמין</h2>
           </div>
+
+          {geminiError && (
+            <div className="mb-4 text-xs font-bold text-rose-600 bg-rose-50 p-3 rounded-xl flex items-center gap-2 border border-rose-100">
+              <AlertTriangle size={16} /> שגיאה בחיבור. ודא שהגדרת את המפתח ב-Vercel.
+            </div>
+          )}
+
           <div className="space-y-4">
-            {dopamineCards.map((card, index) => {
-              const Icon = card.icon;
+            {dopamineOptions.map((card, index) => {
+              const IconComponent = IconMap[card.iconName] || Sparkles; 
+              
               return (
                 <div key={index} className="rounded-[1.6rem] border border-slate-200 bg-slate-50/60 p-4 flex items-start gap-4 hover:bg-white hover:shadow-sm transition-all cursor-pointer">
                   <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center shrink-0 shadow-sm border border-slate-100">
-                    <Icon size={22} className={card.accent} />
+                    <IconComponent size={22} className={card.accent || 'text-indigo-400'} />
                   </div>
                   <div className="text-right">
                     <div className="font-black text-[17px] text-slate-800">{card.title}</div>
@@ -99,10 +148,8 @@ export default function DashboardSection({
 
       </div>
 
-      {/* --- עמודה שמאלית (רחבה - 8/12) --- */}
       <div className="lg:col-span-8 space-y-8">
         
-        {/* טיימר */}
         <section className="bg-[#4b566d] text-white rounded-[2.5rem] px-8 py-7 shadow-xl flex items-center justify-between">
           <div className="flex items-center gap-5">
             <button
@@ -120,7 +167,6 @@ export default function DashboardSection({
           </div>
         </section>
 
-        {/* משימות - מה כדאי לעשות */}
         <section className="bg-white rounded-[2.8rem] p-8 shadow-sm border border-slate-200/60 min-h-[400px]">
           <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-5 mb-8">
             <h2 className="text-[38px] xl:text-[48px] leading-[1.05] font-black text-slate-800 text-right">
@@ -128,7 +174,7 @@ export default function DashboardSection({
             </h2>
 
             <div className="flex items-center bg-slate-50 rounded-[2rem] border border-slate-200 p-2 gap-3 mt-2 xl:mt-0">
-              <span className="text-slate-400 font-bold text-sm px-2">כמה אנרגיה יש לי עכשיו?</span>
+              <span className="text-slate-400 font-bold text-sm px-2 whitespace-nowrap">כמה אנרגיה יש לי עכשיו?</span>
               <div className="flex items-center bg-slate-100 rounded-[1.5rem] p-1 gap-1">
                 {[
                   { key: 'high', label: 'גבוהה' },
@@ -139,19 +185,12 @@ export default function DashboardSection({
                     key={lvl.key}
                     onClick={() => setEnergyLevel(lvl.key)}
                     className={`px-5 py-2 rounded-xl text-[14px] font-black transition-all ${
-                      energyLevel === lvl.key
-                        ? 'bg-amber-500 text-white shadow-md'
-                        : 'text-slate-400 hover:bg-slate-200/60'
+                      energyLevel === lvl.key ? 'bg-amber-500 text-white shadow-md' : 'text-slate-400 hover:bg-slate-200/60'
                     }`}
                   >
                     {lvl.label}
                   </button>
                 ))}
-              </div>
-              <div className="w-px h-8 bg-slate-200 hidden sm:block" />
-              <div className="hidden sm:flex items-center gap-1 pr-1">
-                <button type="button" className="w-10 h-10 flex items-center justify-center text-indigo-500 hover:bg-white rounded-xl transition-all"><Dices size={20} /></button>
-                <button type="button" className="w-10 h-10 flex items-center justify-center text-amber-500 hover:bg-white rounded-xl transition-all"><Sparkles size={20} /></button>
               </div>
             </div>
           </div>
@@ -180,7 +219,7 @@ export default function DashboardSection({
           ) : (
             <div className="space-y-3">
               {filteredTasks.map((task) => (
-                <div key={task.id} className="rounded-[1.7rem] border border-slate-200 bg-slate-50 px-6 py-5 flex items-center gap-4 hover:shadow-sm transition-all">
+                <div key={task.id} className="rounded-[1.7rem] border border-slate-200 bg-slate-50 px-6 py-5 flex items-center gap-4 hover:shadow-sm transition-all cursor-pointer">
                   <button type="button" onClick={() => toggleTask(task.id)}>
                     {task.completed ? <CheckCircle2 className="text-emerald-500" size={26} /> : <Circle className="text-slate-300 hover:text-indigo-300" size={26} />}
                   </button>
@@ -196,7 +235,6 @@ export default function DashboardSection({
           )}
         </section>
 
-        {/* Brain Dump */}
         <section className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-200/60 min-h-[330px]">
           <div className="flex items-center justify-between mb-6">
             <Lightbulb className="text-amber-500" size={26} />
