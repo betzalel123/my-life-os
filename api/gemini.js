@@ -14,12 +14,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { response_mime_type: "application/json" }
+        contents: [{ parts: [{ text: prompt }] }]
       })
     });
 
@@ -31,7 +30,11 @@ export default async function handler(req, res) {
     }
 
     if (data.candidates && data.candidates[0]) {
-      const textResponse = data.candidates[0].content.parts[0].text;
+      let textResponse = data.candidates[0].content.parts[0].text;
+      
+      // ניקוי סימוני קוד במקרה שהמודל מחזיר אותם
+      textResponse = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
+      
       const parsedData = JSON.parse(textResponse);
       return res.status(200).json(parsedData);
     } else {
