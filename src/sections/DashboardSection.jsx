@@ -19,24 +19,30 @@ export default function DashboardSection({
   ]);
   const [isLoadingGemini, setIsLoadingGemini] = useState(false);
   const [isAddingTask, setIsAddingTask] = useState(false);
-  const [geminiError, setGeminiError] = useState(false);
 
-  // פונקציה חכמה להוספת משימה עם ניתוח אנרגיה
   const handleSmartAddTask = async (e) => {
     e.preventDefault();
     if (!newTask.trim()) return;
 
     setIsAddingTask(true);
     
+    // פרומפט משופר ומדויק יותר למניעת Bias של "הכל אנרגיה נמוכה"
     const energyPrompt = `
-      נתח את המשימה הבאה: "${newTask}"
-      קבע מהי רמת האנרגיה הנדרשת עבורה מתוך האפשרויות הבאות בלבד: "high", "medium", "low".
-      - "high": משימות שדורשות ריכוז עמוק, למידה קשה, או מאמץ פיזי/מנטלי משמעותי.
-      - "medium": משימות יומיומיות, עבודה שגרתית, סידורים רגילים.
-      - "low": משימות קלילות, טכניות, אוטומטיות או כאלה שאפשר לעשות כשעייפים.
+      אתה מומחה לניהול זמן ואנרגיה. תפקידך לנתח את המשימה הבאה: "${newTask}" 
+      ולקבוע את רמת האנרגיה המדויקת שהיא דורשת.
       
-      תחזיר תשובה בפורמט JSON בלבד:
-      { "energy": "level_here" }
+      קריטריונים לסיווג:
+      - "high": משימות שדורשות ריכוז שיא, מאמץ מוחי כבד, פתרון בעיות מורכבות, למידה של חומר חדש, או מאמץ פיזי מתיש. 
+        (למשל: כתיבת קוד, למידה למבחן, תכנון פרויקט, אימון כושר, שיחה רגשית מורכבת).
+      - "medium": משימות שדורשות תשומת לב אבל הן שגרתיות או מוכרות. 
+        (למשל: מענה למיילים, קניות בסופר, סידור הבית, בישול ארוחה, פגישת עדכון).
+      - "low": משימות טכניות, חזרתיות, שאפשר לעשות גם כשעייפים מאוד או בלי לחשוב. 
+        (למשל: שטיפת כוס, הוצאת זבל, גלילה בפיד, השקיית עציץ, תיוק דפים).
+
+      חשוב מאוד: אל תהיה עצלן בסיווג. אם המשימה דורשת יותר מ-5 דקות של מחשבה או מאמץ, היא כנראה medium או high.
+      
+      תחזיר אך ורק אובייקט JSON תקין במבנה הבא:
+      { "energy": "high" } או { "energy": "medium" } או { "energy": "low" }
     `;
 
     try {
@@ -47,7 +53,8 @@ export default function DashboardSection({
       });
 
       const data = await response.json();
-      const detectedEnergy = data.energy || 'medium'; // ברירת מחדל אם נכשל
+      // מוודאים שהערך שחזר הוא אחד משלושת האפשרויות
+      const detectedEnergy = (['high', 'medium', 'low'].includes(data.energy)) ? data.energy : 'medium';
 
       const taskObj = {
         id: Date.now(),
@@ -58,10 +65,9 @@ export default function DashboardSection({
 
       setTasks([...tasks, taskObj]);
       setNewTask('');
-      setEnergyLevel(detectedEnergy); // מעביר את המשתמש אוטומטית לרמת האנרגיה של המשימה החדשה
+      setEnergyLevel(detectedEnergy); 
     } catch (error) {
       console.error("Failed to analyze task energy:", error);
-      // אם ה-AI נכשל, פשוט מוסיפים כ-medium כדי לא לתקוע את המשתמש
       addTask(e); 
     } finally {
       setIsAddingTask(false);
@@ -70,35 +76,21 @@ export default function DashboardSection({
 
   const refreshDopamineMenu = async () => {
     setIsLoadingGemini(true);
-    setGeminiError(false);
-    
-    const dopaminePrompt = `
-      תייצר 3 רעיונות קצרים, יצירתיים ופשוטים לפעולות שמשחררות דופמין (Dopamine Menu) לאדם שצריך הפסקה קצרה מהעבודה או הלימודים.
-      חובה קריטית: כל התוכן (הכותרות והתיאורים) חייב להיות כתוב אך ורק בשפה העברית!
-      תחזיר את התשובה בפורמט JSON בלבד, שייראה בדיוק במבנה הזה (אובייקט עם מערך שנקרא options):
-      {
-        "options": [
-          { "title": "כותרת קצרה בעברית", "desc": "תיאור של שורה אחת בעברית", "iconName": "Sparkles", "accent": "text-rose-400" }
-        ]
-      }
-      שמות האייקונים האפשריים: Sparkles, Gift, Lightbulb, Coffee, Flame, Smile, Music, Zap.
-      צבעי אקסנט אפשריים: text-rose-400, text-indigo-400, text-amber-400, text-emerald-400.
-    `;
-
     try {
+      const dopaminePrompt = `
+        תייצר 3 רעיונות קצרים ופשוטים להפסקות דופמין בעברית.
+        פורמט JSON בלבד:
+        { "options": [{ "title": "...", "desc": "...", "iconName": "Sparkles", "accent": "text-rose-400" }] }
+      `;
       const response = await fetch('/api/gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: dopaminePrompt })
       });
-      
       const data = await response.json();
-      if (data && data.options) {
-        setDopamineOptions(data.options);
-      }
+      if (data && data.options) setDopamineOptions(data.options);
     } catch (error) {
       console.error(error);
-      setGeminiError(true);
     } finally {
       setIsLoadingGemini(false);
     }
@@ -138,28 +130,12 @@ export default function DashboardSection({
           </button>
         </section>
 
-        <section className="bg-white rounded-[2.5rem] p-7 shadow-sm border border-slate-200/60">
-          <div className="flex items-center justify-between mb-6">
-            <Calendar className="text-indigo-500" size={24} />
-            <h2 className="text-[26px] font-black text-slate-800">לו״ז קרוב</h2>
-          </div>
-          <div className="rounded-[1.8rem] bg-indigo-50 border border-indigo-100 p-5 flex items-center justify-between">
-            <div className="w-14 h-14 rounded-2xl bg-indigo-500 text-white flex items-center justify-center shadow-md">
-              <Target size={22} />
-            </div>
-            <div className="text-right flex-1 pr-4">
-              <div className="text-[22px] font-black text-slate-800">אימון ערב</div>
-              <div className="text-indigo-500 font-black text-sm mt-1">19:00 • עכשיו בביצוע</div>
-            </div>
-          </div>
-        </section>
-
         <section className="bg-white rounded-[2.5rem] p-7 shadow-sm border border-slate-200/60 min-h-[400px]">
           <div className="flex items-center justify-between mb-6">
             <button 
               onClick={refreshDopamineMenu}
               disabled={isLoadingGemini}
-              className={`px-4 py-2 rounded-xl bg-rose-50 text-rose-500 font-black text-sm flex items-center gap-2 transition-all ${isLoadingGemini ? 'opacity-50 cursor-not-allowed' : 'hover:bg-rose-100 shadow-sm cursor-pointer'}`}
+              className={`px-4 py-2 rounded-xl bg-rose-50 text-rose-500 font-black text-sm flex items-center gap-2 transition-all ${isLoadingGemini ? 'opacity-50 cursor-not-allowed' : 'hover:bg-rose-100 shadow-sm'}`}
             >
               {isLoadingGemini ? <RefreshCw size={16} className="animate-spin" /> : <Flame size={16} />}
               {isLoadingGemini ? 'מייצר...' : 'רענן'}
@@ -171,7 +147,7 @@ export default function DashboardSection({
             {dopamineOptions.map((card, index) => {
               const IconComponent = IconMap[card.iconName] || Sparkles; 
               return (
-                <div key={index} className="rounded-[1.6rem] border border-slate-200 bg-slate-50/60 p-4 flex items-start gap-4 hover:bg-white hover:shadow-sm transition-all cursor-pointer">
+                <div key={index} className="rounded-[1.6rem] border border-slate-200 bg-slate-50/60 p-4 flex items-start gap-4 hover:bg-white transition-all cursor-pointer">
                   <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center shrink-0 shadow-sm border border-slate-100">
                     <IconComponent size={22} className={card.accent || 'text-indigo-400'} />
                   </div>
@@ -198,7 +174,7 @@ export default function DashboardSection({
               {isTimerRunning ? <Pause size={28} /> : <Play size={28} />}
             </button>
             <h2 className="text-[26px] xl:text-[32px] font-black italic text-slate-200 leading-none">
-              מנוע המיקוד ממתין למשימה...
+              מנוע המיקוד...
             </h2>
           </div>
           <div className="text-[52px] xl:text-[64px] font-mono font-black tracking-tight opacity-85">
@@ -213,21 +189,17 @@ export default function DashboardSection({
             </h2>
 
             <div className="flex items-center bg-slate-50 rounded-[2rem] border border-slate-200 p-2 gap-3 mt-2 xl:mt-0">
-              <span className="text-slate-400 font-bold text-sm px-2 whitespace-nowrap">רמת אנרגיה נוכחית</span>
+              <span className="text-slate-400 font-bold text-sm px-2 whitespace-nowrap">אנרגיה נוכחית</span>
               <div className="flex items-center bg-slate-100 rounded-[1.5rem] p-1 gap-1">
-                {[
-                  { key: 'high', label: 'גבוהה' },
-                  { key: 'medium', label: 'בינונית' },
-                  { key: 'low', label: 'נמוכה' },
-                ].map((lvl) => (
+                {['high', 'medium', 'low'].map((lvl) => (
                   <button
-                    key={lvl.key}
-                    onClick={() => setEnergyLevel(lvl.key)}
+                    key={lvl}
+                    onClick={() => setEnergyLevel(lvl)}
                     className={`px-5 py-2 rounded-xl text-[14px] font-black transition-all ${
-                      energyLevel === lvl.key ? 'bg-amber-500 text-white shadow-md' : 'text-slate-400 hover:bg-slate-200/60'
+                      energyLevel === lvl ? 'bg-amber-500 text-white shadow-md' : 'text-slate-400 hover:bg-slate-200/60'
                     }`}
                   >
-                    {lvl.label}
+                    {lvl === 'high' ? 'גבוהה' : lvl === 'medium' ? 'בינונית' : 'נמוכה'}
                   </button>
                 ))}
               </div>
@@ -239,8 +211,8 @@ export default function DashboardSection({
               type="text"
               value={newTask}
               onChange={(e) => setNewTask(e.target.value)}
-              placeholder="כתבי משימה... (הבינה המלאכותית תסווג אותה עבורך)"
-              className="w-full h-[76px] bg-white border-2 border-dashed border-slate-200 rounded-[2rem] py-4 pr-8 pl-24 text-xl outline-none focus:border-indigo-300 transition-all text-slate-700 placeholder:text-slate-300"
+              placeholder="כתבי משימה... הבינה תסווג רמת אנרגיה"
+              className="w-full h-[76px] bg-white border-2 border-dashed border-slate-200 rounded-[2rem] py-4 pr-8 pl-24 text-xl outline-none focus:border-indigo-300 transition-all text-slate-700"
               disabled={isAddingTask}
             />
             <button
@@ -285,7 +257,7 @@ export default function DashboardSection({
             value={brainDump}
             onChange={(e) => setBrainDump(e.target.value)}
             placeholder="פרוק פה הכל... מה שיושב על הראש"
-            className="w-full h-[220px] rounded-[2rem] bg-slate-50 border-none outline-none resize-none p-6 text-xl text-slate-700 placeholder:text-slate-300 focus:ring-2 focus:ring-amber-100/50 transition-all"
+            className="w-full h-[220px] rounded-[2rem] bg-slate-50 border-none outline-none resize-none p-6 text-xl text-slate-700"
           />
         </section>
 
