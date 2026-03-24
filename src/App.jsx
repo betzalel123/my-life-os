@@ -18,21 +18,7 @@ import ScheduleSection from './sections/ScheduleSection';
 import VisionSection from './sections/VisionSection';
 import SkillsSection from './sections/SkillsSection';
 import ToolsSection from './sections/ToolsSection';
-
-const loadFromLocal = (key, defaultValue) => {
-  try {
-    const item = window.localStorage.getItem(key);
-    return item ? JSON.parse(item) : defaultValue;
-  } catch {
-    return defaultValue;
-  }
-};
-
-const saveToLocal = (key, value) => {
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch {}
-};
+import { loadFromLocal, saveToLocal } from './lib/storage';
 
 const getFallbackDopamineMenu = (energyLevel) => {
   if (energyLevel === 'low') {
@@ -173,19 +159,105 @@ export default function App() {
     const tempId = Date.now();
     const taskText = newTask.trim();
 
+    // הוסף מידית משימה "בהערכת אנרגיה"
     updateTasks((prev) => [
       {
         id: tempId,
         text: taskText,
         completed: false,
-        energyRequired: 'medium',
-        emoji: '📝',
+        energyRequired: 'analyzing',
+        emoji: '⏳',
         subTasks: [],
       },
       ...prev,
     ]);
 
     setNewTask('');
+
+    // נסה לנתח אנרגיה ואימוג׳י דרך /api/gemini
+    try {
+      const response = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: `Analyze the following task and return valid JSON only with energy ("low","medium","high") and emoji:
+{"energy":"low|medium|high","emoji":"💬"}
+Task: "${taskText}"`,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const energy = (data?.energy || '').toLowerCase().trim();
+        const finalEnergy = ['low', 'medium', 'high'].includes(energy) ? energy : 'medium';
+        const finalEmoji = data?.emoji || '📝';
+
+        updateTasks((prev) =>
+          prev.map((t) =>
+            t.id === tempId ? { ...t, energyRequired: finalEnergy, emoji: finalEmoji } : t
+          )
+        );
+      } else {
+        // fallback
+        updateTasks((prev) =>
+          prev.map((t) =>
+            t.id === tempId ? { ...t, energyRequired: 'medium', emoji: '📝' } : t
+          )
+        );
+      }
+    } catch {
+      updateTasks((prev) =>
+        prev.map((t) =>
+          t.id === tempId ? { ...t, energyRequired: 'medium', emoji: '📝' } : t
+        )
+      );
+    }
+  };
+
+  const processBrainDump = async () => {
+    const text = String(brainDump || '').trim();
+    if (!text) return;
+
+    try {
+      const response = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: `חלץ מהקטע הבא משימות קצרות וברורות בעברית.
+החזר JSON תקין בלבד בפורמט:
+{"extractedTasks":[{"text":"...","energy":"low|medium|high","emoji":"💬"}]}
+
+קטע:
+${text}`,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+      const extracted = Array.isArray(result?.extractedTasks) ? result.extractedTasks : [];
+
+      if (extracted.length > 0) {
+        updateTasks((prev) => [
+          ...extracted.map((t) => ({
+            id: Date.now() + Math.random(),
+            text: t.text,
+            completed: false,
+            energyRequired: ['low', 'medium', 'high'].includes((t.energy || '').toLowerCase())
+              ? t.energy.toLowerCase()
+              : 'medium',
+            subTasks: [],
+            emoji: t.emoji || '📝',
+          })),
+          ...prev,
+        ]);
+        setBrainDump('');
+      }
+    } catch {
+      // אם יש כשל, לא מוסיפים משימות – המשתמש יוכל לנסות שוב
+    }
   };
 
   const generateDopamineMenu = async () => {
@@ -247,6 +319,15 @@ Return valid JSON only:
   const getTaskStrategy = async (task) => {
     setIsStrategyLoading(true);
     try {
+      // אפשר להרחיב להצגת הטקסט בעתיד; כרגע נשמור על פשטות
+      await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: `Give one concise Hebrew focus strategy for the task below. Return valid JSON only: {"text":"..."}
+Task: "${task.text}"`,
+        }),
+      });
       return;
     } finally {
       setIsStrategyLoading(false);
@@ -399,6 +480,7 @@ Return valid JSON only:
             addTask={addTask}
             brainDump={brainDump}
             setBrainDump={updateBrainDump}
+            onProcessBrainDump={processBrainDump}
             timeLeft={timeLeft}
             isTimerRunning={isTimerRunning}
             setIsTimerRunning={setIsTimerRunning}

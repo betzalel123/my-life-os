@@ -44,6 +44,7 @@ export default function DashboardSection({
   addTask,
   brainDump,
   setBrainDump,
+  onProcessBrainDump,
   timeLeft,
   isTimerRunning,
   setIsTimerRunning,
@@ -410,7 +411,9 @@ export default function DashboardSection({
 
             <button
               type="button"
-              className="px-4 py-2 bg-amber-500 text-white rounded-2xl text-xs font-black shadow-md hover:bg-amber-600 transition-all flex items-center gap-2"
+              onClick={onProcessBrainDump}
+              disabled={!String(brainDump || '').trim()}
+              className="px-4 py-2 bg-amber-500 text-white rounded-2xl text-xs font-black shadow-md hover:bg-amber-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <Sparkles size={14} />
               הפוך למשימות
@@ -428,7 +431,7 @@ export default function DashboardSection({
 
       <div className="space-y-8">
         <section className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-200/50 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
+          <div className="absolute top-0 left-0 w-1 h-full bg-emerלד-500" />
           <h3 className="text-lg font-bold flex items-center gap-2 text-slate-800 mb-4">
             <Wallet size={20} className="text-emerald-500" />
             תקציב מהיר
@@ -583,7 +586,7 @@ export default function DashboardSection({
 
                 <button
                   type="button"
-                  className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"
+                  className="text-sלק-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"
                 >
                   <Trash2 size={16} />
                 </button>
