@@ -67,9 +67,7 @@ export default function App() {
   const [energyLevel, setEnergyLevel] = useState(() =>
     loadFromLocal('lifeos_energyLevel', 'medium')
   );
-  const [tasks, setTasks] = useState(() =>
-    loadFromLocal('lifeos_tasks', [])
-  );
+  const [tasks, setTasks] = useState(() => loadFromLocal('lifeos_tasks', []));
   const [newTask, setNewTask] = useState('');
   const [brainDump, setBrainDump] = useState(() =>
     loadFromLocal('lifeos_brainDump', '')
@@ -96,10 +94,12 @@ export default function App() {
 
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  const [selectedTaskId, setSelectedTaskId] = useState(() =>
-    loadFromLocal('lifeos_selectedTaskId', null)
+  const [focusTask, setFocusTask] = useState(() =>
+    loadFromLocal('lifeos_focusTask', null)
   );
-  const [isBreakingDownTaskId, setIsBreakingDownTaskId] = useState(null);
+  const [isFocusActive, setIsFocusActive] = useState(false);
+  const [isStrategyLoading, setIsStrategyLoading] = useState(false);
+  const [isBreakingDown, setIsBreakingDown] = useState(null);
 
   useEffect(() => {
     setIsAppReady(true);
@@ -138,8 +138,8 @@ export default function App() {
   }, [timeLeft]);
 
   useEffect(() => {
-    saveToLocal('lifeos_selectedTaskId', selectedTaskId);
-  }, [selectedTaskId]);
+    saveToLocal('lifeos_focusTask', focusTask);
+  }, [focusTask]);
 
   useEffect(() => {
     const clock = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -187,95 +187,6 @@ export default function App() {
     ]);
 
     setNewTask('');
-  };
-
-  const breakdownTask = async (taskId, taskText) => {
-    if (!taskId || !taskText) return;
-
-    setIsBreakingDownTaskId(taskId);
-
-    try {
-      const response = await fetch('/api/gemini', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: `
-פרק את המשימה הבאה ל-3 עד 5 תתי-משימות קטנות, ברורות ומעשיות בעברית.
-תחזיר JSON בלבד בפורמט:
-{"subTasks":[{"text":"..."},{"text":"..."}]}
-
-המשימה:
-${taskText}
-          `.trim(),
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`API failed: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const subTasks = Array.isArray(data?.subTasks) ? data.subTasks : [];
-
-      if (subTasks.length > 0) {
-        updateTasks((prev) =>
-          prev.map((task) =>
-            task.id === taskId
-              ? {
-                  ...task,
-                  subTasks: subTasks.map((item, index) => ({
-                    id: `${taskId}-${index}`,
-                    text: item.text,
-                    completed: false,
-                  })),
-                }
-              : task
-          )
-        );
-      }
-    } catch {
-      updateTasks((prev) =>
-        prev.map((task) =>
-          task.id === taskId
-            ? {
-                ...task,
-                subTasks: [
-                  { id: `${taskId}-0`, text: 'לפתוח את מה שקשור למשימה', completed: false },
-                  { id: `${taskId}-1`, text: 'להחליט על צעד ראשון קטן', completed: false },
-                  { id: `${taskId}-2`, text: 'לבצע 5 דקות התחלה', completed: false },
-                ],
-              }
-            : task
-        )
-      );
-    } finally {
-      setIsBreakingDownTaskId(null);
-    }
-  };
-
-  const handleSelectTask = (task) => {
-    setSelectedTaskId((prev) => (prev === task.id ? null : task.id));
-
-    if (!task.subTasks || task.subTasks.length === 0) {
-      breakdownTask(task.id, task.text);
-    }
-  };
-
-  const toggleSubTask = (taskId, subTaskId) => {
-    updateTasks((prev) =>
-      prev.map((task) =>
-        task.id === taskId
-          ? {
-              ...task,
-              subTasks: (task.subTasks || []).map((subTask) =>
-                subTask.id === subTaskId
-                  ? { ...subTask, completed: !subTask.completed }
-                  : subTask
-              ),
-            }
-          : task
-      )
-    );
   };
 
   const generateDopamineMenu = async () => {
@@ -333,6 +244,88 @@ Return valid JSON only:
       balance: income - expenses,
     };
   }, [transactions]);
+
+  const breakdownTask = async (taskId, text) => {
+    setIsBreakingDown(taskId);
+
+    try {
+      const response = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: `פרק את המשימה הבאה ל-3 עד 5 תתי-משימות קטנות וברורות בעברית.
+החזר JSON בלבד בפורמט:
+{"subTasks":[{"text":"..."},{"text":"..."}]}
+
+משימה:
+${text}`,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to break down task');
+      }
+
+      const data = await response.json();
+
+      if (data?.subTasks && Array.isArray(data.subTasks)) {
+        updateTasks((prev) =>
+          prev.map((t) =>
+            t.id === taskId
+              ? {
+                  ...t,
+                  subTasks: data.subTasks.map((s, index) => ({
+                    id: index,
+                    text: s.text,
+                    completed: false,
+                  })),
+                }
+              : t
+          )
+        );
+        return;
+      }
+
+      throw new Error('Bad response shape');
+    } catch {
+      updateTasks((prev) =>
+        prev.map((t) =>
+          t.id === taskId
+            ? {
+                ...t,
+                subTasks: [
+                  { id: 0, text: 'לפתוח את מה שצריך בשביל להתחיל', completed: false },
+                  { id: 1, text: 'לעשות את הצעד הראשון הכי קטן', completed: false },
+                  { id: 2, text: 'להמשיך עוד כמה דקות', completed: false },
+                ],
+              }
+            : t
+        )
+      );
+    } finally {
+      setIsBreakingDown(null);
+    }
+  };
+
+  const handleSelectTask = (task) => {
+    setFocusTask(task);
+    setIsFocusActive(false);
+    setIsStrategyLoading(false);
+
+    if (!task.subTasks || task.subTasks.length === 0) {
+      breakdownTask(task.id, task.text);
+    }
+  };
+
+  const startPrepare = (task) => {
+    setFocusTask(task);
+    setIsFocusActive(true);
+    setActiveTab('dashboard');
+  };
+
+  const openHelper = () => {
+    alert('כאן בהמשך נחבר את עוזר ההתחלה.');
+  };
 
   if (!isAppReady) {
     return (
@@ -392,10 +385,14 @@ Return valid JSON only:
             expenses={financeStats.expenses}
             balance={financeStats.balance}
             currentTime={currentTime}
-            selectedTaskId={selectedTaskId}
-            onSelectTask={handleSelectTask}
-            toggleSubTask={toggleSubTask}
-            isBreakingDownTaskId={isBreakingDownTaskId}
+            focusTask={focusTask}
+            isFocusActive={isFocusActive}
+            isStrategyLoading={isStrategyLoading}
+            isBreakingDown={isBreakingDown}
+            setIsFocusActive={setIsFocusActive}
+            startPrepare={startPrepare}
+            openHelper={openHelper}
+            handleSelectTask={handleSelectTask}
           />
         )}
 
@@ -408,6 +405,13 @@ Return valid JSON only:
             newTask={newTask}
             setNewTask={setNewTask}
             addTask={addTask}
+            focusTask={focusTask}
+            handleSelectTask={handleSelectTask}
+            isFocusActive={isFocusActive}
+            isStrategyLoading={isStrategyLoading}
+            isBreakingDown={isBreakingDown}
+            startPrepare={startPrepare}
+            openHelper={openHelper}
           />
         )}
 
