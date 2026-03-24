@@ -1,10 +1,8 @@
 import React from 'react';
 import {
-  Plus,
   Circle,
+  Plus,
   Loader2,
-  Dices,
-  Sparkles,
   AlignLeft,
   Trash2,
   Play,
@@ -22,12 +20,13 @@ export default function TasksSection({
   setNewTask,
   addTask,
   focusTask,
-  handleSelectTask,
   isFocusActive,
   isStrategyLoading,
   isBreakingDown,
+  setIsFocusActive,
   startPrepare,
   openHelper,
+  onSelectTask,
 }) {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -58,21 +57,6 @@ export default function TasksSection({
               </button>
             ))}
           </div>
-
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className="p-3 text-indigo-600 bg-white shadow-sm hover:shadow-md rounded-2xl transition-all"
-            >
-              <Dices size={18} />
-            </button>
-            <button
-              type="button"
-              className="p-3 text-amber-500 bg-white shadow-sm hover:shadow-md rounded-2xl transition-all"
-            >
-              <Sparkles size={18} />
-            </button>
-          </div>
         </div>
 
         <form
@@ -90,8 +74,7 @@ export default function TasksSection({
             type="submit"
             className="px-6 bg-indigo-600 text-white rounded-2xl font-black flex items-center gap-2 shadow-lg active:scale-95 transition-all"
           >
-            <Plus size={20} />
-            הוסף
+            <Plus size={20} /> הוסף
           </button>
         </form>
 
@@ -101,13 +84,13 @@ export default function TasksSection({
               key={task.id}
               className={`rounded-[2rem] border-2 transition-all group ${
                 focusTask?.id === task.id
-                  ? 'bg-indigo-50 border-indigo-200'
+                  ? 'bg-indigo-50 border-indigo-500 shadow-sm p-4'
                   : energyLevel === task.energyRequired
-                  ? 'bg-indigo-50 border-indigo-200'
-                  : 'border-transparent hover:bg-slate-50'
+                  ? 'bg-indigo-50/40 border-indigo-200 p-4'
+                  : 'border-transparent hover:bg-slate-50 p-4'
               }`}
             >
-              <div className="flex items-start gap-4 p-5">
+              <div className="flex items-start gap-4">
                 <button
                   type="button"
                   onClick={() =>
@@ -135,17 +118,20 @@ export default function TasksSection({
                   )}
                 </button>
 
-                <div
-                  className="flex-1 cursor-pointer"
-                  onClick={() => handleSelectTask(task)}
-                >
-                  <p
-                    className={`font-bold text-lg ${
-                      task.energyRequired !== energyLevel ? 'opacity-40' : ''
-                    } ${focusTask?.id === task.id ? 'text-indigo-900 opacity-100' : ''}`}
+                <div className="flex-1 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => onSelectTask(task)}
+                    className="block w-full text-right"
                   >
-                    {task.emoji} {task.text}
-                  </p>
+                    <p
+                      className={`font-bold text-lg ${
+                        focusTask?.id === task.id ? 'text-indigo-900' : 'text-slate-800'
+                      }`}
+                    >
+                      {task.emoji || '📝'} {task.text}
+                    </p>
+                  </button>
 
                   {focusTask?.id === task.id &&
                     !isFocusActive &&
@@ -156,12 +142,12 @@ export default function TasksSection({
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
+                            setIsFocusActive(true);
                             startPrepare(task);
                           }}
                           className="whitespace-nowrap text-[10px] font-black text-white bg-indigo-600 px-3 py-1.5 rounded-full shadow-sm flex items-center gap-2 hover:scale-105 transition-all"
                         >
-                          <ArrowRight size={10} />
-                          כניסה לריכוז
+                          <ArrowRight size={10} /> כניסה לריכוז
                         </button>
 
                         <button
@@ -172,45 +158,70 @@ export default function TasksSection({
                           }}
                           className="whitespace-nowrap text-[10px] font-black text-indigo-600 bg-white border border-indigo-100 px-3 py-1.5 rounded-full shadow-sm flex items-center gap-2 hover:bg-indigo-50 transition-colors"
                         >
-                          <MessageCircle size={10} />
-                          קשה לי להתחיל
+                          <MessageCircle size={10} /> קשה לי להתחיל
                         </button>
                       </div>
                     )}
 
-                  {focusTask?.id === task.id && isBreakingDown === task.id && (
-                    <div className="mt-3 p-3 bg-white/60 rounded-xl border border-dashed border-indigo-200 flex items-center gap-3 animate-pulse">
-                      <Loader2 className="animate-spin text-indigo-400" size={16} />
-                      <span className="text-[11px] font-bold text-indigo-500 italic">
-                        ה-AI מפרק את המשימה לשלבים קטנים...
-                      </span>
+                  {focusTask?.id === task.id && (
+                    <div className="mt-3">
+                      {isBreakingDown === task.id ? (
+                        <div className="mr-8 p-3 bg-white/40 rounded-xl border border-dashed border-indigo-200 flex items-center gap-3 animate-pulse">
+                          <Loader2 className="animate-spin text-indigo-400" size={16} />
+                          <span className="text-[11px] font-bold text-indigo-500 italic">
+                            ה-AI מפרק את המשימה לשלבים קטנים...
+                          </span>
+                        </div>
+                      ) : (
+                        task.subTasks &&
+                        task.subTasks.length > 0 && (
+                          <div className="mr-8 space-y-1.5 border-r-2 border-indigo-100/50 pr-4 animate-in slide-in-from-top-1 duration-300">
+                            {task.subTasks.map((st) => (
+                              <div
+                                key={st.id}
+                                onClick={() =>
+                                  setTasks((prev) =>
+                                    prev.map((t) =>
+                                      t.id === task.id
+                                        ? {
+                                            ...t,
+                                            subTasks: t.subTasks.map((s) =>
+                                              s.id === st.id
+                                                ? { ...s, completed: !s.completed }
+                                                : s
+                                            ),
+                                          }
+                                        : t
+                                    )
+                                  )
+                                }
+                                className="flex items-center gap-3 cursor-pointer group/sub"
+                              >
+                                {st.completed ? (
+                                  <CheckCircle2 className="text-emerald-500" size={15} />
+                                ) : (
+                                  <Circle
+                                    className="text-slate-400 group-hover/sub:text-indigo-500 transition-colors"
+                                    size={15}
+                                  />
+                                )}
+
+                                <span
+                                  className={`text-[13px] font-medium transition-all ${
+                                    st.completed
+                                      ? 'line-through text-slate-300'
+                                      : 'text-slate-600'
+                                  }`}
+                                >
+                                  {st.text}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )
+                      )}
                     </div>
                   )}
-
-                  {focusTask?.id === task.id &&
-                    task.subTasks &&
-                    task.subTasks.length > 0 && (
-                      <div className="mt-3 mr-2 space-y-1.5 border-r-2 border-indigo-100/50 pr-4">
-                        {task.subTasks.map((st) => (
-                          <div key={st.id} className="flex items-center gap-3">
-                            {st.completed ? (
-                              <CheckCircle2 size={15} className="text-emerald-500" />
-                            ) : (
-                              <Circle size={15} className="text-slate-400" />
-                            )}
-                            <span
-                              className={`text-[13px] font-medium ${
-                                st.completed
-                                  ? 'line-through text-slate-300'
-                                  : 'text-slate-600'
-                              }`}
-                            >
-                              {st.text}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                 </div>
 
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
