@@ -67,7 +67,9 @@ export default function App() {
   const [energyLevel, setEnergyLevel] = useState(() =>
     loadFromLocal('lifeos_energyLevel', 'medium')
   );
-  const [tasks, setTasks] = useState(() => loadFromLocal('lifeos_tasks', []));
+  const [tasks, setTasks] = useState(() =>
+    loadFromLocal('lifeos_tasks', [])
+  );
   const [newTask, setNewTask] = useState('');
   const [brainDump, setBrainDump] = useState(() =>
     loadFromLocal('lifeos_brainDump', '')
@@ -94,9 +96,7 @@ export default function App() {
 
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  const [focusTask, setFocusTask] = useState(() =>
-    loadFromLocal('lifeos_focusTask', null)
-  );
+  const [focusTask, setFocusTask] = useState(null);
   const [isFocusActive, setIsFocusActive] = useState(false);
   const [isStrategyLoading, setIsStrategyLoading] = useState(false);
   const [isBreakingDown, setIsBreakingDown] = useState(null);
@@ -138,10 +138,6 @@ export default function App() {
   }, [timeLeft]);
 
   useEffect(() => {
-    saveToLocal('lifeos_focusTask', focusTask);
-  }, [focusTask]);
-
-  useEffect(() => {
     const clock = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(clock);
   }, []);
@@ -164,7 +160,10 @@ export default function App() {
   const updateVision = (value) => setVision(value);
 
   const updateTasks = (action) => {
-    setTasks((prev) => (typeof action === 'function' ? action(prev) : action));
+    setTasks((prev) => {
+      const next = typeof action === 'function' ? action(prev) : action;
+      return next;
+    });
   };
 
   const addTask = async (e) => {
@@ -227,7 +226,7 @@ Return valid JSON only:
     if (activeTab === 'dashboard' && !dopamineMenu && !isDopamineLoading) {
       generateDopamineMenu();
     }
-  }, [activeTab]);
+  }, [activeTab, dopamineMenu, isDopamineLoading, energyLevel]);
 
   const financeStats = useMemo(() => {
     const expenses = transactions
@@ -245,6 +244,15 @@ Return valid JSON only:
     };
   }, [transactions]);
 
+  const getTaskStrategy = async (task) => {
+    setIsStrategyLoading(true);
+    try {
+      return;
+    } finally {
+      setIsStrategyLoading(false);
+    }
+  };
+
   const breakdownTask = async (taskId, text) => {
     setIsBreakingDown(taskId);
 
@@ -253,29 +261,28 @@ Return valid JSON only:
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: `פרק את המשימה הבאה ל-3 עד 5 תתי-משימות קטנות וברורות בעברית.
-החזר JSON בלבד בפורמט:
+          prompt: `פרק את המשימה הבאה ל-3 עד 5 תתי-משימות קצרות, ברורות, ובעברית.
+החזר JSON תקין בלבד בפורמט:
 {"subTasks":[{"text":"..."},{"text":"..."}]}
 
-משימה:
-${text}`,
+משימה: ${text}`,
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to break down task');
+        throw new Error(`API failed: ${response.status}`);
       }
 
-      const data = await response.json();
+      const result = await response.json();
 
-      if (data?.subTasks && Array.isArray(data.subTasks)) {
+      if (result?.subTasks && Array.isArray(result.subTasks)) {
         updateTasks((prev) =>
           prev.map((t) =>
             t.id === taskId
               ? {
                   ...t,
-                  subTasks: data.subTasks.map((s, index) => ({
-                    id: index,
+                  subTasks: result.subTasks.map((s, i) => ({
+                    id: i,
                     text: s.text,
                     completed: false,
                   })),
@@ -283,10 +290,22 @@ ${text}`,
               : t
           )
         );
-        return;
+      } else {
+        updateTasks((prev) =>
+          prev.map((t) =>
+            t.id === taskId
+              ? {
+                  ...t,
+                  subTasks: [
+                    { id: 0, text: 'לפתוח את מה שצריך למשימה', completed: false },
+                    { id: 1, text: 'לעשות צעד ראשון קטן', completed: false },
+                    { id: 2, text: 'להמשיך עוד 5 דקות', completed: false },
+                  ],
+                }
+              : t
+          )
+        );
       }
-
-      throw new Error('Bad response shape');
     } catch {
       updateTasks((prev) =>
         prev.map((t) =>
@@ -294,9 +313,9 @@ ${text}`,
             ? {
                 ...t,
                 subTasks: [
-                  { id: 0, text: 'לפתוח את מה שצריך בשביל להתחיל', completed: false },
-                  { id: 1, text: 'לעשות את הצעד הראשון הכי קטן', completed: false },
-                  { id: 2, text: 'להמשיך עוד כמה דקות', completed: false },
+                  { id: 0, text: 'לפתוח את מה שצריך למשימה', completed: false },
+                  { id: 1, text: 'לעשות צעד ראשון קטן', completed: false },
+                  { id: 2, text: 'להמשיך עוד 5 דקות', completed: false },
                 ],
               }
             : t
@@ -307,24 +326,28 @@ ${text}`,
     }
   };
 
-  const handleSelectTask = (task) => {
+  const handleSelectTask = async (task, skipStrategy = false) => {
     setFocusTask(task);
     setIsFocusActive(false);
-    setIsStrategyLoading(false);
+
+    if (!skipStrategy) {
+      getTaskStrategy(task);
+    }
 
     if (!task.subTasks || task.subTasks.length === 0) {
-      breakdownTask(task.id, task.text);
+      await breakdownTask(task.id, task.text);
     }
   };
 
   const startPrepare = (task) => {
     setFocusTask(task);
     setIsFocusActive(true);
-    setActiveTab('dashboard');
+    setTimeLeft(25 * 60);
+    setIsTimerRunning(false);
   };
 
   const openHelper = () => {
-    alert('כאן בהמשך נחבר את עוזר ההתחלה.');
+    alert('אפשר לחבר כאן עוזר AI בהמשך');
   };
 
   if (!isAppReady) {
@@ -392,7 +415,7 @@ ${text}`,
             setIsFocusActive={setIsFocusActive}
             startPrepare={startPrepare}
             openHelper={openHelper}
-            handleSelectTask={handleSelectTask}
+            onSelectTask={handleSelectTask}
           />
         )}
 
@@ -406,12 +429,13 @@ ${text}`,
             setNewTask={setNewTask}
             addTask={addTask}
             focusTask={focusTask}
-            handleSelectTask={handleSelectTask}
             isFocusActive={isFocusActive}
             isStrategyLoading={isStrategyLoading}
             isBreakingDown={isBreakingDown}
+            setIsFocusActive={setIsFocusActive}
             startPrepare={startPrepare}
             openHelper={openHelper}
+            onSelectTask={handleSelectTask}
           />
         )}
 
