@@ -21,14 +21,16 @@ import {
   Coffee,
   Play,
   Pause,
-  CheckCircle2,
-  ChevronUp,
+  ArrowRight,
+  MessageCircle,
 } from 'lucide-react';
 
 const formatTime = (seconds) => {
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
-  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  return `${mins.toString().padStart(2, '0')}:${secs
+    .toString()
+    .padStart(2, '0')}`;
 };
 
 export default function DashboardSection({
@@ -50,13 +52,18 @@ export default function DashboardSection({
   expenses,
   balance,
   currentTime,
-  selectedTaskId,
-  onSelectTask,
-  toggleSubTask,
-  isBreakingDownTaskId,
+  focusTask,
+  isFocusActive,
+  isStrategyLoading,
+  isBreakingDown,
+  setIsFocusActive,
+  startPrepare,
+  openHelper,
 }) {
   const visibleTasks = tasks.filter(
-    (t) => !t.completed && (t.energyRequired === energyLevel || t.energyRequired === 'analyzing')
+    (t) =>
+      !t.completed &&
+      (t.energyRequired === energyLevel || t.energyRequired === 'analyzing')
   );
 
   const activeScheduleItem = {
@@ -115,7 +122,11 @@ export default function DashboardSection({
                     : 'bg-emerald-500 text-emerald-950'
                 }`}
               >
-                {isTimerRunning ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
+                {isTimerRunning ? (
+                  <Pause size={18} fill="currentColor" />
+                ) : (
+                  <Play size={18} fill="currentColor" />
+                )}
                 {isTimerRunning ? 'השהה' : 'המשך'}
               </button>
             </div>
@@ -214,53 +225,56 @@ export default function DashboardSection({
               </div>
             )}
 
-            {visibleTasks.map((task) => {
-              const isSelected = selectedTaskId === task.id;
+            {visibleTasks.map((task) => (
+              <div
+                key={task.id}
+                className={`rounded-[2rem] border-2 transition-all group ${
+                  focusTask?.id === task.id
+                    ? 'bg-indigo-50 border-indigo-500 shadow-sm p-4'
+                    : 'border-transparent hover:bg-slate-50 p-3'
+                }`}
+              >
+                <div className="flex items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setTasks((prev) =>
+                        prev.map((t) =>
+                          t.id === task.id ? { ...t, completed: true } : t
+                        )
+                      )
+                    }
+                    className="transition-transform active:scale-75"
+                  >
+                    {task.energyRequired === 'analyzing' ? (
+                      <Loader2 className="animate-spin text-indigo-400" size={22} />
+                    ) : (
+                      <Circle
+                        className={`hover:text-indigo-500 transition-colors ${
+                          task.energyRequired === 'low'
+                            ? 'text-rose-500'
+                            : task.energyRequired === 'medium'
+                            ? 'text-amber-500'
+                            : 'text-emerald-500'
+                        }`}
+                        size={22}
+                      />
+                    )}
+                  </button>
 
-              return (
-                <div
-                  key={task.id}
-                  className={`rounded-[2rem] border-2 transition-all group ${
-                    isSelected
-                      ? 'bg-indigo-50 border-indigo-500 shadow-sm p-4'
-                      : 'border-transparent hover:bg-slate-50 p-3'
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
+                  <div className="flex-1 overflow-hidden">
                     <button
                       type="button"
-                      onClick={() =>
-                        setTasks((prev) =>
-                          prev.map((t) =>
-                            t.id === task.id ? { ...t, completed: true } : t
-                          )
-                        )
-                      }
-                      className="transition-transform active:scale-75"
-                    >
-                      {task.energyRequired === 'analyzing' ? (
-                        <Loader2 className="animate-spin text-indigo-400" size={22} />
-                      ) : (
-                        <Circle
-                          className={`hover:text-indigo-500 transition-colors ${
-                            task.energyRequired === 'low'
-                              ? 'text-rose-500'
-                              : task.energyRequired === 'medium'
-                              ? 'text-amber-500'
-                              : 'text-emerald-500'
-                          }`}
-                          size={22}
-                        />
-                      )}
-                    </button>
-
-                    <div
-                      className="flex-1 overflow-hidden cursor-pointer"
-                      onClick={() => onSelectTask(task)}
+                      onClick={() => {
+                        if (typeof window !== 'undefined' && window.handleSelectTask) {
+                          window.handleSelectTask(task);
+                        }
+                      }}
+                      className="block w-full text-right"
                     >
                       <span
                         className={`font-bold text-base block truncate ${
-                          isSelected ? 'text-indigo-900' : 'text-slate-800'
+                          focusTask?.id === task.id ? 'text-indigo-900' : 'text-slate-800'
                         }`}
                       >
                         <span className="ml-2 inline-block align-middle">
@@ -268,89 +282,87 @@ export default function DashboardSection({
                         </span>
                         {task.text}
                       </span>
-                    </div>
+                    </button>
 
-                    <div className="flex gap-1 flex-shrink-0">
-                      {isSelected && (
-                        <button
-                          type="button"
-                          onClick={() => onSelectTask(task)}
-                          className="p-1.5 text-indigo-400 hover:bg-white rounded-lg transition-all border border-indigo-100"
-                          title="סגור"
-                        >
-                          <ChevronUp size={16} />
-                        </button>
+                    {focusTask?.id === task.id &&
+                      !isFocusActive &&
+                      !isStrategyLoading &&
+                      isBreakingDown !== task.id && (
+                        <div className="flex gap-2 mt-3 overflow-x-auto pb-1 no-scrollbar">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIsFocusActive(true);
+                              startPrepare(task);
+                            }}
+                            className="whitespace-nowrap text-[10px] font-black text-white bg-indigo-600 px-3 py-1.5 rounded-full shadow-sm flex items-center gap-2 hover:scale-105 transition-all"
+                          >
+                            <ArrowRight size={10} />
+                            כניסה לריכוז
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openHelper();
+                            }}
+                            className="whitespace-nowrap text-[10px] font-black text-indigo-600 bg-white border border-indigo-100 px-3 py-1.5 rounded-full shadow-sm flex items-center gap-2 hover:bg-indigo-50 transition-colors"
+                          >
+                            <MessageCircle size={10} />
+                            קשה לי להתחיל
+                          </button>
+                        </div>
                       )}
-
-                      <button
-                        type="button"
-                        className="p-1.5 text-slate-300 hover:text-indigo-600 transition-colors"
-                        title="פשט משימה"
-                      >
-                        <AlignLeft size={18} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setTasks((prev) => prev.filter((t) => t.id !== task.id))
-                        }
-                        className="p-1.5 text-slate-300 hover:text-rose-500 transition-colors"
-                        title="מחק"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
                   </div>
 
-                  {isSelected && (
-                    <div className="mt-3">
-                      {isBreakingDownTaskId === task.id ? (
-                        <div className="mr-8 p-3 bg-white/40 rounded-xl border border-dashed border-indigo-200 flex items-center gap-3 animate-pulse">
-                          <Loader2 className="animate-spin text-indigo-400" size={16} />
-                          <span className="text-[11px] font-bold text-indigo-500 italic">
-                            ה-AI מפרק את המשימה לשלבים קטנים...
+                  <div className="flex gap-1 flex-shrink-0">
+                    <button
+                      type="button"
+                      className="p-1.5 text-slate-300 hover:text-indigo-600 transition-colors"
+                      title="פשט משימה"
+                    >
+                      <AlignLeft size={18} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setTasks((prev) => prev.filter((t) => t.id !== task.id))
+                      }
+                      className="p-1.5 text-slate-300 hover:text-rose-500 transition-colors"
+                      title="מחק"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                </div>
+
+                {focusTask?.id === task.id &&
+                  task.subTasks &&
+                  task.subTasks.length > 0 && (
+                    <div className="mt-3 mr-8 space-y-1.5 border-r-2 border-indigo-100/50 pr-4">
+                      {task.subTasks.map((st) => (
+                        <div
+                          key={st.id}
+                          className="flex items-center gap-3"
+                        >
+                          <Circle size={15} className="text-slate-400" />
+                          <span
+                            className={`text-[13px] font-medium ${
+                              st.completed
+                                ? 'line-through text-slate-300'
+                                : 'text-slate-600'
+                            }`}
+                          >
+                            {st.text}
                           </span>
                         </div>
-                      ) : (
-                        task.subTasks &&
-                        task.subTasks.length > 0 && (
-                          <div className="mr-8 space-y-1.5 border-r-2 border-indigo-100/50 pr-4">
-                            {task.subTasks.map((st) => (
-                              <div
-                                key={st.id}
-                                onClick={() => toggleSubTask(task.id, st.id)}
-                                className="flex items-center gap-3 cursor-pointer group/sub"
-                              >
-                                {st.completed ? (
-                                  <CheckCircle2
-                                    className="text-emerald-500"
-                                    size={15}
-                                  />
-                                ) : (
-                                  <Circle
-                                    className="text-slate-400 group-hover/sub:text-indigo-500 transition-colors"
-                                    size={15}
-                                  />
-                                )}
-                                <span
-                                  className={`text-[13px] font-medium transition-all ${
-                                    st.completed
-                                      ? 'line-through text-slate-300'
-                                      : 'text-slate-600'
-                                  }`}
-                                >
-                                  {st.text}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )
-                      )}
+                      ))}
                     </div>
                   )}
-                </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         </section>
 
