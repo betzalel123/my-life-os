@@ -1,14 +1,14 @@
 import React from 'react';
 import { Plus, TrendingUp, Banknote, Trash2 } from 'lucide-react';
 
-const FinanceSection = ({
+export default function FinanceSection({
   balance,
   transactions,
   newTransaction,
   setNewTransaction,
   addTransaction,
   deleteTransaction,
-}) => {
+}) {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <header className="flex justify-between items-end mb-4">
@@ -43,6 +43,7 @@ const FinanceSection = ({
             <div className="space-y-4">
               <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl">
                 <button
+                  type="button"
                   onClick={() =>
                     setNewTransaction({ ...newTransaction, type: 'expense' })
                   }
@@ -56,6 +57,7 @@ const FinanceSection = ({
                 </button>
 
                 <button
+                  type="button"
                   onClick={() =>
                     setNewTransaction({ ...newTransaction, type: 'income' })
                   }
@@ -96,6 +98,7 @@ const FinanceSection = ({
               />
 
               <button
+                type="button"
                 onClick={addTransaction}
                 className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-lg"
               >
@@ -138,6 +141,7 @@ const FinanceSection = ({
                     </p>
 
                     <button
+                      type="button"
                       onClick={() => deleteTransaction(t.id)}
                       className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"
                     >
@@ -152,6 +156,4 @@ const FinanceSection = ({
       </div>
     </div>
   );
-};
-
-export default FinanceSection;
+}
