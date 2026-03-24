@@ -26,55 +26,71 @@ import {
   Gamepad2,
 } from 'lucide-react';
 
-const DashboardSection = ({
-  activeTab,
-  timerMode,
-  isFocusActive,
-  activeHabitStack,
-  isTimerMinimized,
-  isTimerRunning,
-  focusTask,
-  isStrategyLoading,
-  isBreakingDown,
-  setIsFocusActive,
-  startPrepare,
-  setIsTimerMinimized,
-  formatTime,
-  timeLeft,
-  setFocusTask,
-  tasks,
-  energyLevel,
-  updateEnergyLevel,
-  handleSmartRoulette,
-  handleSmartReorder,
-  isSorting,
-  newTask,
-  setNewTask,
-  addTask,
-  updateTasks,
-  handleSelectTask,
-  taskStrategy,
-  toggleSubTask,
-  handleTaskRewrite,
-  processBrainDump,
-  isAILoading,
-  brainDump,
-  updateBrainDump,
-  activeScheduleItem,
-  dopamineMenu,
-  isDopamineLoading,
-  generateDopamineMenu,
-  balance,
-  expenses,
-  updateActiveTab,
-  houseChores = [],
-  newChore,
-  setNewChore,
-  addChore,
-  toggleChore,
-  deleteChore,
-  openHelper,
-}) => {
+export default function DashboardSection(props) {
+  const {
+    activeTab = 'dashboard',
+
+    timerMode = 'work',
+    isFocusActive = false,
+    activeHabitStack = null,
+    isTimerMinimized = false,
+    isTimerRunning = false,
+    focusTask = null,
+    isStrategyLoading = null,
+    isBreakingDown = null,
+
+    setIsFocusActive = () => {},
+    startPrepare = () => {},
+    setIsTimerMinimized = () => {},
+    formatTime = (s) => {
+      const mins = Math.floor((s || 0) / 60);
+      const secs = (s || 0) % 60;
+      return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    },
+    timeLeft = 0,
+    setFocusTask = () => {},
+
+    tasks = [],
+    energyLevel = 'medium',
+    updateEnergyLevel = () => {},
+    handleSmartRoulette = () => {},
+    handleSmartReorder = () => {},
+    isSorting = false,
+
+    newTask = '',
+    setNewTask = () => {},
+    addTask = (e) => e?.preventDefault?.(),
+    updateTasks = () => {},
+    handleSelectTask = () => {},
+    taskStrategy = null,
+    toggleSubTask = () => {},
+    handleTaskRewrite = () => {},
+
+    processBrainDump = () => {},
+    isAILoading = false,
+    brainDump = '',
+    updateBrainDump = () => {},
+
+    activeScheduleItem = null,
+
+    dopamineMenu = [],
+    isDopamineLoading = false,
+    generateDopamineMenu = () => {},
+
+    balance = 0,
+    expenses = 0,
+    updateActiveTab = () => {},
+
+    houseChores = [],
+    newChore = '',
+    setNewChore = () => {},
+    addChore = (e) => e?.preventDefault?.(),
+    toggleChore = () => {},
+    deleteChore = () => {},
+
+    openHelper = () => {},
+  } = props || {};
+
   if (activeTab !== 'dashboard') return null;
 
   const choresCompleted = houseChores.filter((c) => c.completed).length;
@@ -132,14 +148,14 @@ const DashboardSection = ({
 
               {focusTask &&
                 !isStrategyLoading &&
-                isBreakingDown !== focusTask.id &&
+                isBreakingDown !== focusTask?.id &&
                 !isFocusActive &&
                 !activeHabitStack &&
                 timerMode !== 'hyperfocus' && (
                   <button
                     onClick={() => {
                       setIsFocusActive(true);
-                      startPrepare(task);
+                      startPrepare(focusTask);
                     }}
                     className="bg-indigo-600 hover:bg-indigo-50 text-white hover:text-indigo-600 px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 shadow-lg transition-colors"
                   >
@@ -190,7 +206,7 @@ const DashboardSection = ({
                 <div className="text-center mb-2">
                   <h2 className="text-2xl font-black text-white leading-tight truncate px-4">
                     <span className="ml-2 inline-block align-middle">{focusTask?.emoji}</span>
-                    {focusTask?.text || activeHabitStack?.name}
+                    {focusTask?.text || activeHabitStack?.name || 'מיקוד'}
                   </h2>
                 </div>
 
@@ -205,7 +221,7 @@ const DashboardSection = ({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        openHelper?.();
+                        openHelper();
                       }}
                       className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-6 py-3 rounded-full font-bold text-sm transition-all flex items-center gap-2 shadow-lg active:scale-95"
                     >
@@ -319,7 +335,7 @@ const DashboardSection = ({
                       {task.energyRequired === 'analyzing' ? (
                         <Loader2 className="animate-spin text-indigo-400" size={22} />
                       ) : (
-                        <Circle size={22} />
+                        <Circle className="text-slate-400" size={22} />
                       )}
                     </button>
 
@@ -352,7 +368,7 @@ const DashboardSection = ({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              openHelper?.();
+                              openHelper();
                             }}
                             className="whitespace-nowrap text-[10px] font-black text-indigo-600 bg-white border border-indigo-100 px-3 py-1.5 rounded-full shadow-sm flex items-center gap-2 hover:bg-indigo-50 transition-colors"
                           >
@@ -386,7 +402,7 @@ const DashboardSection = ({
                     </div>
                   </div>
 
-                  {focusTask?.id === task.id && task.subTasks && task.subTasks.length > 0 && (
+                  {focusTask?.id === task.id && task.subTasks?.length > 0 && (
                     <div className="mt-3 mr-8 space-y-1.5 border-r-2 border-indigo-100/50 pr-4">
                       {task.subTasks.map((st) => (
                         <div
@@ -407,7 +423,7 @@ const DashboardSection = ({
           </div>
         </section>
 
-        <section className="bg-white p-8 rounded-[3rem] shadow-sm border border-slate-200/50 relative overflow-hidden group">
+        <section className="bg-white p-8 rounded-[3rem] shadow-sm border border-slate-200/50 relative overflow-hidden">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-bold flex items-center gap-2 text-slate-800">
               <Lightbulb size={22} className="text-amber-500" />
@@ -489,7 +505,7 @@ const DashboardSection = ({
           </div>
         </section>
 
-        <section className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-200/50 group overflow-hidden relative">
+        <section className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-200/50 overflow-hidden relative">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-bold flex items-center gap-2 text-slate-800">
               <Flame size={20} className="text-rose-500" />
@@ -512,7 +528,7 @@ const DashboardSection = ({
             </div>
           )}
 
-          {dopamineMenu && !isDopamineLoading && (
+          {!!dopamineMenu?.length && !isDopamineLoading && (
             <div className="space-y-2">
               {dopamineMenu.map((item, i) => (
                 <div key={i} className="p-3 bg-white border border-slate-100 rounded-xl shadow-sm flex items-start gap-3">
@@ -604,6 +620,4 @@ const DashboardSection = ({
       </div>
     </div>
   );
-};
-
-export default DashboardSection;
+}
