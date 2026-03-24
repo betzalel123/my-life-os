@@ -23,69 +23,123 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'No models available' });
     }
 
-    const bestModel =
-      listData.models.find(
-        (m) =>
-          m.supportedGenerationMethods?.includes('generateContent') &&
+    const candidateModels = listData.models.filter(
+      (m) =>
+        m.supportedGenerationMethods?.includes('generateContent') &&
+        (
+          m.name?.includes('2.5-flash') ||
+          m.name?.includes('2.0-flash') ||
+          m.name?.includes('1.5-flash') ||
           m.name?.includes('1.5-pro')
-      ) ||
-      listData.models.find(
-        (m) =>
-          m.supportedGenerationMethods?.includes('generateContent') &&
-          m.name?.includes('1.5-flash')
-      ) ||
-      listData.models.find((m) =>
-        m.supportedGenerationMethods?.includes('generateContent')
-      );
+        )
+    );
 
-    if (!bestModel) {
-      console.error('No suitable model found:', listData.models);
-      return res.status(500).json({ error: 'No suitable model found' });
+    const modelsToTry =
+      candidateModels.length > 0
+        ? candidateModels
+        : listData.models.filter((m) =>
+            m.supportedGenerationMethods?.includes('generateContent')
+          );
+
+    let lastError = null;
+
+    for (const model of modelsToTry) {
+      try {
+        console.log('Trying Gemini model:', model.name);
+
+        const genUrl = `https://generativelanguage.googleapis.com/v1beta/${model.name}:generateContent?key=${apiKey}`;
+
+        const response = await fetch(genUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.2,
+              topP: 0.95
+            }
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || data.error) {
+          lastError = data;
+
+          const status = data?.error?.status;
+          const message = data?.error?.message || '';
+
+          // אם זו מכסה שנגמרה — ננסה מודל אחר
+          if (status === 'RESOURCE_EXHAUSTED' || response.status === 429) {
+            console.warn(`Quota exhausted for ${model.name}, trying next model...`);
+            continue;
+          }
+
+          // אם המודל לא קיים / לא נתמך — ננסה מודל אחר
+          if (status === 'NOT_FOUND' || response.status === 404) {
+            console.warn(`Model not found ${model.name}, trying next model...`);
+            continue;
+          }
+
+          // שגיאה אחרת — נמשיך לזכור אותה
+          console.error('Google API Error:', JSON.stringify(data, null, 2));
+          continue;
+        }
+
+        const textResponse = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (!textResponse) {
+          lastError = data;
+          console.error('Invalid response from Gemini:', JSON.stringify(data, null, 2));
+          continue;
+        }
+
+        let cleaned = textResponse.trim();
+        cleaned = cleaned
+          .replace(/^```json\s*/i, '')
+          .replace(/^```\s*/i, '')
+          .replace(/```$/i, '')
+          .trim();
+
+        const objectMatch = cleaned.match(/\{[\s\S]*\}/);
+        if (objectMatch) {
+          cleaned = objectMatch[0];
+        }
+
+        const parsedData = JSON.parse(cleaned);
+        return res.status(200).json(parsedData);
+      } catch (innerError) {
+        lastError = innerError;
+        console.error(`Model attempt failed for ${model.name}:`, innerError);
+      }
     }
 
-    console.log('Using Gemini model:', bestModel.name);
+    // אם הגענו לפה, כל המודלים נכשלו
+    const errorMessage =
+      lastError?.error?.message ||
+      lastError?.message ||
+      'All Gemini model attempts failed';
 
-    const genUrl = `https://generativelanguage.googleapis.com/v1beta/${bestModel.name}:generateContent?key=${apiKey}`;
+    const errorStatus =
+      lastError?.error?.status ||
+      'UNKNOWN_ERROR';
 
-    const response = await fetch(genUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.2,
-          topP: 0.95
-        }
-      })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok || data.error) {
-      console.error('Google API Error:', JSON.stringify(data, null, 2));
-      return res.status(response.status || 500).json({
-        error: data?.error?.message || 'Google API error'
+    // מחזירים 429 אם זו באמת בעיית quota
+    if (
+      errorStatus === 'RESOURCE_EXHAUSTED' ||
+      String(errorMessage).includes('quota') ||
+      String(errorMessage).includes('Quota exceeded')
+    ) {
+      return res.status(429).json({
+        error: 'quota_exceeded',
+        message: errorMessage
       });
     }
 
-    const textResponse = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!textResponse) {
-      console.error('Invalid Gemini response:', JSON.stringify(data, null, 2));
-      return res.status(500).json({ error: 'Invalid response from Gemini' });
-    }
-
-    let cleaned = textResponse.trim();
-
-    cleaned = cleaned.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim();
-
-    const objectMatch = cleaned.match(/\{[\s\S]*\}/);
-    if (objectMatch) {
-      cleaned = objectMatch[0];
-    }
-
-    const parsedData = JSON.parse(cleaned);
-    return res.status(200).json(parsedData);
+    return res.status(500).json({
+      error: 'gemini_failed',
+      message: errorMessage
+    });
   } catch (error) {
     console.error('Gemini server error:', error);
     return res.status(500).json({ error: 'Internal server error' });
