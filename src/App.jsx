@@ -80,6 +80,10 @@ export default function App() {
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const timerRef = useRef(null);
 
+  // NEW: focus engine modes and minimize state
+  const [timerMode, setTimerMode] = useState('work');
+  const [isTimerMinimized, setIsTimerMinimized] = useState(false);
+
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const [focusTask, setFocusTask] = useState(null);
@@ -128,17 +132,48 @@ export default function App() {
     return () => clearInterval(clock);
   }, []);
 
+  // NEW: handle timer end transitions
+  const handleTimerEnd = () => {
+    setIsTimerMinimized(false);
+    if (timerMode === 'prepare') {
+      setTimerMode('work');
+      setTimeLeft(25 * 60);
+      setIsTimerRunning(true);
+      return;
+    }
+    if (timerMode === 'work' || timerMode === 'hyperfocus') {
+      setTimerMode('transition');
+      setTimeLeft(5 * 60);
+      setIsTimerRunning(true);
+      return;
+    }
+    if (timerMode === 'transition') {
+      setTimerMode('break');
+      setTimeLeft(5 * 60);
+      setIsTimerRunning(true);
+      return;
+    }
+    // break or any other -> reset to work and stop
+    setTimerMode('work');
+    setTimeLeft(25 * 60);
+    setIsTimerRunning(false);
+  };
+
   useEffect(() => {
     if (isTimerRunning && timeLeft > 0) {
       timerRef.current = setInterval(() => {
         setTimeLeft((prev) => prev - 1);
       }, 1000);
+    } else if (isTimerRunning && timeLeft === 0) {
+      clearInterval(timerRef.current);
+      setIsTimerRunning(false);
+      handleTimerEnd();
     } else {
       clearInterval(timerRef.current);
     }
 
     return () => clearInterval(timerRef.current);
-  }, [isTimerRunning, timeLeft]);
+  }, [isTimerRunning, timeLeft, timerMode]);
 
   const updateActiveTab = (value) => setActiveTab(value);
   const updateEnergyLevel = (value) => setEnergyLevel(value);
@@ -423,8 +458,9 @@ Task: "${task.text}"`,
   const startPrepare = (task) => {
     setFocusTask(task);
     setIsFocusActive(true);
-    setTimeLeft(25 * 60);
-    setIsTimerRunning(false);
+    setTimerMode('prepare');
+    setTimeLeft(5 * 60);
+    setIsTimerRunning(true);
   };
 
   const openHelper = () => {
@@ -484,6 +520,9 @@ Task: "${task.text}"`,
             timeLeft={timeLeft}
             isTimerRunning={isTimerRunning}
             setIsTimerRunning={setIsTimerRunning}
+            timerMode={timerMode}
+            isTimerMinimized={isTimerMinimized}
+            setIsTimerMinimized={setIsTimerMinimized}
             dopamineMenu={dopamineMenu}
             isDopamineLoading={isDopamineLoading}
             generateDopamineMenu={generateDopamineMenu}

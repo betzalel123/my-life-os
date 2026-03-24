@@ -25,14 +25,7 @@ import {
   MessageCircle,
   CheckCircle2,
 } from 'lucide-react';
-
-const formatTime = (seconds) => {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins.toString().padStart(2, '0')}:${secs
-    .toString()
-    .padStart(2, '0')}`;
-};
+import FocusEngineCard from '../components/dashboard/FocusEngineCard';
 
 export default function DashboardSection({
   energyLevel,
@@ -48,6 +41,9 @@ export default function DashboardSection({
   timeLeft,
   isTimerRunning,
   setIsTimerRunning,
+  timerMode,
+  isTimerMinimized,
+  setIsTimerMinimized,
   dopamineMenu,
   isDopamineLoading,
   generateDopamineMenu,
@@ -88,54 +84,21 @@ export default function DashboardSection({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-top-4 duration-700">
       <div className="lg:col-span-2 space-y-8">
-        <section className="text-white shadow-2xl relative overflow-hidden transition-all duration-700 ease-in-out bg-slate-900 p-6 rounded-[3rem] min-h-[220px]">
-          <div className="absolute inset-0 bg-white/5 pointer-events-none" />
-
-          <div className="relative z-10 flex flex-col gap-4 h-full">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="bg-indigo-600 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase flex items-center gap-2">
-                  <Sparkles size={12} />
-                  פוקוס
-                </span>
-              </div>
-
-              <div className="text-xl font-mono font-black text-white/80 tabular-nums bg-white/10 px-4 py-1 rounded-xl">
-                {formatTime(timeLeft)}
-              </div>
-            </div>
-
-            <div className="text-center mb-2">
-              <h2 className="text-2xl font-black text-white leading-tight truncate px-4">
-                מנוע המיקוד ממתין למשימה...
-              </h2>
-            </div>
-
-            <div className="flex flex-col items-center justify-center flex-1">
-              <h2 className="text-[72px] md:text-[100px] font-mono font-black tracking-tighter tabular-nums leading-none drop-shadow-2xl">
-                {formatTime(timeLeft)}
-              </h2>
-            </div>
-
-            <div className="flex justify-center gap-4 mt-auto pb-2">
-              <button
-                onClick={() => setIsTimerRunning(!isTimerRunning)}
-                className={`px-8 py-3 rounded-[2rem] font-black text-sm flex items-center gap-3 shadow-xl active:scale-95 transition-all ${
-                  isTimerRunning
-                    ? 'bg-amber-500 text-amber-950'
-                    : 'bg-emerald-500 text-emerald-950'
-                }`}
-              >
-                {isTimerRunning ? (
-                  <Pause size={18} fill="currentColor" />
-                ) : (
-                  <Play size={18} fill="currentColor" />
-                )}
-                {isTimerRunning ? 'השהה' : 'המשך'}
-              </button>
-            </div>
-          </div>
-        </section>
+        <FocusEngineCard
+          timeLeft={timeLeft}
+          isTimerRunning={isTimerRunning}
+          setIsTimerRunning={setIsTimerRunning}
+          timerMode={timerMode}
+          focusTask={focusTask}
+          activeHabitStack={null}
+          isFocusActive={isFocusActive}
+          isTimerMinimized={isTimerMinimized}
+          setIsTimerMinimized={setIsTimerMinimized}
+          isStrategyLoading={isStrategyLoading}
+          isBreakingDown={isBreakingDown}
+          setIsFocusActive={setIsFocusActive}
+          startPrepare={startPrepare}
+        />
 
         <section className="bg-white p-8 rounded-[3rem] shadow-sm border border-slate-200/50 overflow-hidden">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
@@ -431,7 +394,7 @@ export default function DashboardSection({
 
       <div className="space-y-8">
         <section className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-200/50 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-1 h-full bg-emerלד-500" />
+          <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
           <h3 className="text-lg font-bold flex items-center gap-2 text-slate-800 mb-4">
             <Wallet size={20} className="text-emerald-500" />
             תקציב מהיר
@@ -586,7 +549,7 @@ export default function DashboardSection({
 
                 <button
                   type="button"
-                  className="text-sלק-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"
+                  className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"
                 >
                   <Trash2 size={16} />
                 </button>
