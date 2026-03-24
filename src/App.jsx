@@ -18,6 +18,7 @@ import ScheduleSection from './sections/ScheduleSection';
 import VisionSection from './sections/VisionSection';
 import SkillsSection from './sections/SkillsSection';
 import ToolsSection from './sections/ToolsSection';
+import { getLocalEmoji } from './lib/icons';
 import { loadFromLocal, saveToLocal } from './lib/storage';
 
 const getFallbackDopamineMenu = (energyLevel) => {
@@ -128,6 +129,39 @@ export default function App() {
   }, [timeLeft]);
 
   useEffect(() => {
+    if (!isAppReady || loadFromLocal('lifeos_iconsBackfilled_v1', false)) {
+      return;
+    }
+
+    let hasChanges = false;
+    const nextTasks = tasks.map((task) => {
+      const currentEmoji = String(task.emoji || '').trim();
+
+      if (currentEmoji && currentEmoji !== '📝' && currentEmoji !== '⏳') {
+        return task;
+      }
+
+      const nextEmoji = getLocalEmoji(task.text);
+
+      if (nextEmoji === currentEmoji) {
+        return task;
+      }
+
+      hasChanges = true;
+      return {
+        ...task,
+        emoji: nextEmoji,
+      };
+    });
+
+    if (hasChanges) {
+      updateTasks(nextTasks);
+    }
+
+    saveToLocal('lifeos_iconsBackfilled_v1', true);
+  }, [isAppReady, tasks]);
+
+  useEffect(() => {
     const clock = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(clock);
   }, []);
@@ -193,6 +227,7 @@ export default function App() {
 
     const tempId = Date.now();
     const taskText = newTask.trim();
+    const localEmoji = getLocalEmoji(taskText);
 
     // הוסף מידית משימה "בהערכת אנרגיה"
     updateTasks((prev) => [
@@ -201,7 +236,7 @@ export default function App() {
         text: taskText,
         completed: false,
         energyRequired: 'analyzing',
-        emoji: '⏳',
+        emoji: localEmoji,
         subTasks: [],
       },
       ...prev,
@@ -225,25 +260,29 @@ Task: "${taskText}"`,
         const data = await response.json();
         const energy = (data?.energy || '').toLowerCase().trim();
         const finalEnergy = ['low', 'medium', 'high'].includes(energy) ? energy : 'medium';
-        const finalEmoji = data?.emoji || '📝';
 
         updateTasks((prev) =>
           prev.map((t) =>
-            t.id === tempId ? { ...t, energyRequired: finalEnergy, emoji: finalEmoji } : t
+            t.id === tempId
+              ? {
+                  ...t,
+                  energyRequired: finalEnergy,
+                  emoji: data?.emoji || t.emoji,
+                }
+              : t
           )
         );
       } else {
-        // fallback
         updateTasks((prev) =>
           prev.map((t) =>
-            t.id === tempId ? { ...t, energyRequired: 'medium', emoji: '📝' } : t
+            t.id === tempId ? { ...t, energyRequired: 'medium' } : t
           )
         );
       }
     } catch {
       updateTasks((prev) =>
         prev.map((t) =>
-          t.id === tempId ? { ...t, energyRequired: 'medium', emoji: '📝' } : t
+          t.id === tempId ? { ...t, energyRequired: 'medium' } : t
         )
       );
     }
@@ -284,7 +323,7 @@ ${text}`,
               ? t.energy.toLowerCase()
               : 'medium',
             subTasks: [],
-            emoji: t.emoji || '📝',
+            emoji: t.emoji || getLocalEmoji(t.text),
           })),
           ...prev,
         ]);
