@@ -8,104 +8,171 @@ import ScheduleSection from './sections/ScheduleSection';
 import VisionSection from './sections/VisionSection';
 import SkillsSection from './sections/SkillsSection';
 import ToolsSection from './sections/ToolsSection';
-import { loadFromLocal } from './lib/storage';
+import { loadFromLocal, saveToLocal } from './lib/storage';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState(() => loadFromLocal('lifeos_activeTab', 'dashboard'));
-  const [energyLevel, setEnergyLevel] = useState(() => loadFromLocal('lifeos_energyLevel', 'medium'));
-  const [tasks, setTasks] = useState(() => loadFromLocal('lifeos_tasks', []));
-  const [transactions, setTransactions] = useState(() => loadFromLocal('lifeos_transactions', []));
-  const [newTask, setNewTask] = useState('');
-  const [brainDump, setBrainDump] = useState(() => loadFromLocal('lifeos_brainDump', ''));
-  const [timeLeft, setTimeLeft] = useState(() => loadFromLocal('lifeos_timeLeft', 25 * 60));
-  const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [activeTab, setActiveTab] = useState(() =>
+    loadFromLocal('lifeos_activeTab', 'dashboard')
+  );
 
-  useEffect(() => {
-    window.localStorage.setItem('lifeos_activeTab', JSON.stringify(activeTab));
-    window.localStorage.setItem('lifeos_energyLevel', JSON.stringify(energyLevel));
-    window.localStorage.setItem('lifeos_tasks', JSON.stringify(tasks));
-    window.localStorage.setItem('lifeos_transactions', JSON.stringify(transactions));
-    window.localStorage.setItem('lifeos_brainDump', JSON.stringify(brainDump));
-    window.localStorage.setItem('lifeos_timeLeft', JSON.stringify(timeLeft));
-  }, [activeTab, energyLevel, tasks, transactions, brainDump, timeLeft]);
+  const [energyLevel, setEnergyLevel] = useState(() =>
+    loadFromLocal('lifeos_energyLevel', 'medium')
+  );
+
+  const [tasks, setTasks] = useState(() =>
+    loadFromLocal('lifeos_tasks', [])
+  );
+
+  const [newTask, setNewTask] = useState('');
+  const [brainDump, setBrainDump] = useState(() =>
+    loadFromLocal('lifeos_brainDump', '')
+  );
+
+  const [timeLeft, setTimeLeft] = useState(() =>
+    loadFromLocal('lifeos_timeLeft', 25 * 60)
+  );
+
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+
+  const [transactions, setTransactions] = useState(() =>
+    loadFromLocal('lifeos_transactions', [])
+  );
+
+  const [vision, setVision] = useState(() =>
+    loadFromLocal(
+      'lifeos_vision',
+      'לבנות חיים מאוזנים שבהם היצירתיות שלי באה לידי ביטוי מדי יום.'
+    )
+  );
+
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
     const clock = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(clock);
   }, []);
 
-  useEffect(() => {
-    let interval = null;
-    if (isTimerRunning && timeLeft > 0) {
-      interval = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isTimerRunning, timeLeft]);
+  const updateActiveTab = (value) => {
+    setActiveTab(value);
+    saveToLocal('lifeos_activeTab', value);
+  };
+
+  const updateEnergyLevel = (value) => {
+    setEnergyLevel(value);
+    saveToLocal('lifeos_energyLevel', value);
+  };
+
+  const updateTasks = (value) => {
+    const nextValue = typeof value === 'function' ? value(tasks) : value;
+    setTasks(nextValue);
+    saveToLocal('lifeos_tasks', nextValue);
+  };
+
+  const updateBrainDump = (value) => {
+    const nextValue = typeof value === 'function' ? value(brainDump) : value;
+    setBrainDump(nextValue);
+    saveToLocal('lifeos_brainDump', nextValue);
+  };
+
+  const updateTransactions = (value) => {
+    const nextValue =
+      typeof value === 'function' ? value(transactions) : value;
+    setTransactions(nextValue);
+    saveToLocal('lifeos_transactions', nextValue);
+  };
+
+  const updateVision = (value) => {
+    const nextValue = typeof value === 'function' ? value(vision) : value;
+    setVision(nextValue);
+    saveToLocal('lifeos_vision', nextValue);
+  };
 
   const addTask = (e) => {
     e.preventDefault();
     if (!newTask.trim()) return;
 
-    setTasks((prev) => [
-      { id: Date.now(), text: newTask.trim(), completed: false, energyRequired: energyLevel },
-      ...prev,
-    ]);
+    const task = {
+      id: Date.now(),
+      text: newTask.trim(),
+      completed: false,
+      energyRequired: energyLevel,
+    };
+
+    updateTasks([task, ...tasks]);
     setNewTask('');
   };
 
   const toggleTask = (id) => {
-    setTasks((prev) => prev.map((task) => task.id === id ? { ...task, completed: !task.completed } : task));
+    updateTasks((prev) =>
+      prev.map((task) =>
+        task.id === id ? { ...task, completed: !task.completed } : task
+      )
+    );
   };
 
   const deleteTask = (id) => {
-    setTasks((prev) => prev.filter((task) => task.id !== id));
+    updateTasks((prev) => prev.filter((task) => task.id !== id));
   };
 
   return (
-    <div className="min-h-screen bg-[#f4f7fb] text-slate-900 font-sans pb-32" dir="rtl">
+    <div
+      className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans selection:bg-indigo-100 pb-32"
+      dir="rtl"
+    >
       <Header currentTime={currentTime} />
 
-      <main className="max-w-[1680px] mx-auto px-6 lg:px-10 py-8">
+      <main className="p-6 md:p-10 max-w-7xl mx-auto space-y-10">
         {activeTab === 'dashboard' && (
           <DashboardSection
-            timeLeft={timeLeft}
-            isTimerRunning={isTimerRunning}
-            setIsTimerRunning={setIsTimerRunning}
             energyLevel={energyLevel}
-            setEnergyLevel={setEnergyLevel}
-            tasks={tasks} 
+            setEnergyLevel={updateEnergyLevel}
+            tasks={tasks}
+            setTasks={updateTasks}
             newTask={newTask}
             setNewTask={setNewTask}
             addTask={addTask}
             toggleTask={toggleTask}
             deleteTask={deleteTask}
             brainDump={brainDump}
-            setBrainDump={setBrainDump}
+            setBrainDump={updateBrainDump}
+            timeLeft={timeLeft}
+            isTimerRunning={isTimerRunning}
+            setIsTimerRunning={setIsTimerRunning}
           />
         )}
 
         {activeTab === 'tasks' && (
           <TasksSection
             tasks={tasks}
+            energyLevel={energyLevel}
+            setEnergyLevel={updateEnergyLevel}
             newTask={newTask}
             setNewTask={setNewTask}
             addTask={addTask}
             toggleTask={toggleTask}
             deleteTask={deleteTask}
-            energyLevel={energyLevel}
-            setEnergyLevel={setEnergyLevel}
           />
         )}
 
-        {activeTab === 'finance' && <FinanceSection transactions={transactions} />}
+        {activeTab === 'finance' && (
+          <FinanceSection
+            transactions={transactions}
+            setTransactions={updateTransactions}
+          />
+        )}
+
         {activeTab === 'schedule' && <ScheduleSection />}
-        {activeTab === 'vision' && <VisionSection />}
+
+        {activeTab === 'vision' && (
+          <VisionSection vision={vision} setVision={updateVision} />
+        )}
+
         {activeTab === 'skills' && <SkillsSection />}
+
         {activeTab === 'tools' && <ToolsSection />}
       </main>
 
-      <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
+      <BottomNav activeTab={activeTab} setActiveTab={updateActiveTab} />
     </div>
   );
 }
