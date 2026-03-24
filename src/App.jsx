@@ -96,6 +96,12 @@ export default function App() {
 
   const [currentTime, setCurrentTime] = useState(new Date());
 
+  const [focusTask, setFocusTask] = useState(() =>
+    loadFromLocal('lifeos_focusTask', null)
+  );
+  const [isBreakingDown, setIsBreakingDown] = useState(null);
+  const [taskStrategy, setTaskStrategy] = useState(null);
+
   useEffect(() => {
     setIsAppReady(true);
   }, []);
@@ -131,6 +137,10 @@ export default function App() {
   useEffect(() => {
     saveToLocal('lifeos_timeLeft', timeLeft);
   }, [timeLeft]);
+
+  useEffect(() => {
+    saveToLocal('lifeos_focusTask', focusTask);
+  }, [focusTask]);
 
   useEffect(() => {
     const clock = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -180,14 +190,103 @@ export default function App() {
     setNewTask('');
   };
 
+  const callAIJson = async (prompt) => {
+    const response = await fetch('/api/gemini', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`API failed: ${response.status}`);
+    }
+
+    return response.json();
+  };
+
+  const breakdownTask = async (taskId, text) => {
+    setIsBreakingDown(taskId);
+
+    try {
+      const data = await callAIJson(`
+פרק את המשימה הבאה ל-3 עד 5 תתי-משימות קטנות, ברורות ומעשיות.
+תחזיר JSON תקין בלבד בפורמט:
+{"subTasks":[{"text":"..."},{"text":"..."}]}
+
+משימה:
+${text}
+      `);
+
+      const subTasks = Array.isArray(data?.subTasks) ? data.subTasks : [];
+
+      if (subTasks.length > 0) {
+        updateTasks((prev) =>
+          prev.map((task) =>
+            task.id === taskId
+              ? {
+                  ...task,
+                  subTasks: subTasks.map((item, index) => ({
+                    id: index,
+                    text: item.text,
+                    completed: false,
+                  })),
+                }
+              : task
+          )
+        );
+      }
+    } catch {
+      updateTasks((prev) =>
+        prev.map((task) =>
+          task.id === taskId && (!task.subTasks || task.subTasks.length === 0)
+            ? {
+                ...task,
+                subTasks: [
+                  { id: 0, text: 'לפתוח את מה שצריך למשימה', completed: false },
+                  { id: 1, text: 'לעשות צעד ראשון קטן', completed: false },
+                  { id: 2, text: 'להמשיך עוד 5 דקות', completed: false },
+                ],
+              }
+            : task
+        )
+      );
+    } finally {
+      setIsBreakingDown(null);
+    }
+  };
+
+  const handleSelectTask = (task) => {
+    setFocusTask(task);
+    setTaskStrategy(null);
+
+    if (!task.subTasks || task.subTasks.length === 0) {
+      breakdownTask(task.id, task.text);
+    }
+  };
+
+  const toggleSubTask = (taskId, subTaskId) => {
+    updateTasks((prev) =>
+      prev.map((task) =>
+        task.id === taskId
+          ? {
+              ...task,
+              subTasks: (task.subTasks || []).map((subTask) =>
+                subTask.id === subTaskId
+                  ? { ...subTask, completed: !subTask.completed }
+                  : subTask
+              ),
+            }
+          : task
+      )
+    );
+  };
+
   const generateDopamineMenu = async () => {
     setIsDopamineLoading(true);
 
     try {
       const fallback = getFallbackDopamineMenu(energyLevel);
 
-      // אם יש לך endpoint עובד - הוא ישמש.
-      // אם לא, או אם יש quota / שגיאה - נופלים אוטומטית ל-fallback.
       const response = await fetch('/api/gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -296,6 +395,11 @@ Return valid JSON only:
             expenses={financeStats.expenses}
             balance={financeStats.balance}
             currentTime={currentTime}
+            focusTask={focusTask}
+            onSelectTask={handleSelectTask}
+            isBreakingDown={isBreakingDown}
+            toggleSubTask={toggleSubTask}
+            taskStrategy={taskStrategy}
           />
         )}
 
