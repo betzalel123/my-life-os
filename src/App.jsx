@@ -96,11 +96,10 @@ export default function App() {
 
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  const [focusTask, setFocusTask] = useState(() =>
-    loadFromLocal('lifeos_focusTask', null)
+  const [selectedTaskId, setSelectedTaskId] = useState(() =>
+    loadFromLocal('lifeos_selectedTaskId', null)
   );
-  const [isBreakingDown, setIsBreakingDown] = useState(null);
-  const [taskStrategy, setTaskStrategy] = useState(null);
+  const [isBreakingDownTaskId, setIsBreakingDownTaskId] = useState(null);
 
   useEffect(() => {
     setIsAppReady(true);
@@ -139,8 +138,8 @@ export default function App() {
   }, [timeLeft]);
 
   useEffect(() => {
-    saveToLocal('lifeos_focusTask', focusTask);
-  }, [focusTask]);
+    saveToLocal('lifeos_selectedTaskId', selectedTaskId);
+  }, [selectedTaskId]);
 
   useEffect(() => {
     const clock = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -190,33 +189,32 @@ export default function App() {
     setNewTask('');
   };
 
-  const callAIJson = async (prompt) => {
-    const response = await fetch('/api/gemini', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt }),
-    });
+  const breakdownTask = async (taskId, taskText) => {
+    if (!taskId || !taskText) return;
 
-    if (!response.ok) {
-      throw new Error(`API failed: ${response.status}`);
-    }
-
-    return response.json();
-  };
-
-  const breakdownTask = async (taskId, text) => {
-    setIsBreakingDown(taskId);
+    setIsBreakingDownTaskId(taskId);
 
     try {
-      const data = await callAIJson(`
-פרק את המשימה הבאה ל-3 עד 5 תתי-משימות קטנות, ברורות ומעשיות.
-תחזיר JSON תקין בלבד בפורמט:
+      const response = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: `
+פרק את המשימה הבאה ל-3 עד 5 תתי-משימות קטנות, ברורות ומעשיות בעברית.
+תחזיר JSON בלבד בפורמט:
 {"subTasks":[{"text":"..."},{"text":"..."}]}
 
-משימה:
-${text}
-      `);
+המשימה:
+${taskText}
+          `.trim(),
+        }),
+      });
 
+      if (!response.ok) {
+        throw new Error(`API failed: ${response.status}`);
+      }
+
+      const data = await response.json();
       const subTasks = Array.isArray(data?.subTasks) ? data.subTasks : [];
 
       if (subTasks.length > 0) {
@@ -226,7 +224,7 @@ ${text}
               ? {
                   ...task,
                   subTasks: subTasks.map((item, index) => ({
-                    id: index,
+                    id: `${taskId}-${index}`,
                     text: item.text,
                     completed: false,
                   })),
@@ -238,26 +236,25 @@ ${text}
     } catch {
       updateTasks((prev) =>
         prev.map((task) =>
-          task.id === taskId && (!task.subTasks || task.subTasks.length === 0)
+          task.id === taskId
             ? {
                 ...task,
                 subTasks: [
-                  { id: 0, text: 'לפתוח את מה שצריך למשימה', completed: false },
-                  { id: 1, text: 'לעשות צעד ראשון קטן', completed: false },
-                  { id: 2, text: 'להמשיך עוד 5 דקות', completed: false },
+                  { id: `${taskId}-0`, text: 'לפתוח את מה שקשור למשימה', completed: false },
+                  { id: `${taskId}-1`, text: 'להחליט על צעד ראשון קטן', completed: false },
+                  { id: `${taskId}-2`, text: 'לבצע 5 דקות התחלה', completed: false },
                 ],
               }
             : task
         )
       );
     } finally {
-      setIsBreakingDown(null);
+      setIsBreakingDownTaskId(null);
     }
   };
 
   const handleSelectTask = (task) => {
-    setFocusTask(task);
-    setTaskStrategy(null);
+    setSelectedTaskId((prev) => (prev === task.id ? null : task.id));
 
     if (!task.subTasks || task.subTasks.length === 0) {
       breakdownTask(task.id, task.text);
@@ -395,11 +392,10 @@ Return valid JSON only:
             expenses={financeStats.expenses}
             balance={financeStats.balance}
             currentTime={currentTime}
-            focusTask={focusTask}
+            selectedTaskId={selectedTaskId}
             onSelectTask={handleSelectTask}
-            isBreakingDown={isBreakingDown}
             toggleSubTask={toggleSubTask}
-            taskStrategy={taskStrategy}
+            isBreakingDownTaskId={isBreakingDownTaskId}
           />
         )}
 
