@@ -5,127 +5,89 @@ export default async function handler(req, res) {
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: 'Missing GEMINI_API_KEY' });
+    return res.status(500).json({ error: 'API key is missing' });
   }
 
-  const { prompt } = req.body || {};
-  if (!prompt || typeof prompt !== 'string') {
+  const { prompt } = req.body;
+  if (!prompt) {
     return res.status(400).json({ error: 'Prompt is required' });
   }
 
   try {
-    // 1) Find available models dynamically
-    const listResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
-    );
+    const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+    const listResponse = await fetch(listUrl);
     const listData = await listResponse.json();
 
-    if (!listResponse.ok || !Array.isArray(listData.models)) {
-      return res.status(500).json({
-        error: 'Failed to list Gemini models',
-        details: listData,
-      });
+    if (!listData.models || !Array.isArray(listData.models) || listData.models.length === 0) {
+      console.error('No models available:', listData);
+      return res.status(500).json({ error: 'No models available' });
     }
 
-    const supportsGenerate = (model) =>
-      Array.isArray(model.supportedGenerationMethods) &&
-      model.supportedGenerationMethods.includes('generateContent');
-
-    // Prefer stronger / more useful models first
-    const preferredOrder = [
-      'models/gemini-2.5-pro',
-      'models/gemini-2.5-flash',
-      'models/gemini-1.5-pro',
-      'models/gemini-1.5-flash',
-      'models/gemini-pro',
-    ];
-
-    let selectedModel =
-      preferredOrder
-        .map((name) => listData.models.find((m) => m.name === name && supportsGenerate(m)))
-        .find(Boolean) ||
+    const bestModel =
       listData.models.find(
         (m) =>
-          supportsGenerate(m) &&
-          (m.name.includes('flash') || m.name.includes('pro'))
+          m.supportedGenerationMethods?.includes('generateContent') &&
+          m.name?.includes('1.5-pro')
       ) ||
-      listData.models.find(supportsGenerate);
+      listData.models.find(
+        (m) =>
+          m.supportedGenerationMethods?.includes('generateContent') &&
+          m.name?.includes('1.5-flash')
+      ) ||
+      listData.models.find((m) =>
+        m.supportedGenerationMethods?.includes('generateContent')
+      );
 
-    if (!selectedModel) {
-      return res.status(500).json({ error: 'No supported Gemini model found' });
+    if (!bestModel) {
+      console.error('No suitable model found:', listData.models);
+      return res.status(500).json({ error: 'No suitable model found' });
     }
 
-    const generateUrl = `https://generativelanguage.googleapis.com/v1beta/${selectedModel.name}:generateContent?key=${apiKey}`;
+    console.log('Using Gemini model:', bestModel.name);
 
-    const generateResponse = await fetch(generateUrl, {
+    const genUrl = `https://generativelanguage.googleapis.com/v1beta/${bestModel.name}:generateContent?key=${apiKey}`;
+
+    const response = await fetch(genUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
           temperature: 0.2,
-          topP: 0.95,
-          topK: 32,
-          maxOutputTokens: 1200,
-        },
-      }),
+          topP: 0.95
+        }
+      })
     });
 
-    const generateData = await generateResponse.json();
+    const data = await response.json();
 
-    if (!generateResponse.ok || generateData.error) {
-      return res.status(generateResponse.status || 500).json({
-        error: 'Gemini generation failed',
-        details: generateData,
+    if (!response.ok || data.error) {
+      console.error('Google API Error:', JSON.stringify(data, null, 2));
+      return res.status(response.status || 500).json({
+        error: data?.error?.message || 'Google API error'
       });
     }
 
-    const rawText =
-      generateData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const textResponse = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
-    if (!rawText) {
-      return res.status(500).json({
-        error: 'Empty response from Gemini',
-        details: generateData,
-      });
+    if (!textResponse) {
+      console.error('Invalid Gemini response:', JSON.stringify(data, null, 2));
+      return res.status(500).json({ error: 'Invalid response from Gemini' });
     }
 
-    // Clean possible markdown fences
-    const cleaned = rawText
-      .replace(/```json/gi, '')
-      .replace(/```/g, '')
-      .trim();
+    let cleaned = textResponse.trim();
 
-    try {
-      const parsed = JSON.parse(cleaned);
-      return res.status(200).json(parsed);
-    } catch {
-      // Try to extract first JSON object/array if model added extra text
-      const objectMatch = cleaned.match(/\{[\s\S]*\}/);
-      const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
-      const jsonCandidate = objectMatch?.[0] || arrayMatch?.[0];
+    cleaned = cleaned.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim();
 
-      if (!jsonCandidate) {
-        return res.status(500).json({
-          error: 'Could not parse Gemini JSON',
-          rawText: cleaned,
-        });
-      }
-
-      try {
-        const parsed = JSON.parse(jsonCandidate);
-        return res.status(200).json(parsed);
-      } catch {
-        return res.status(500).json({
-          error: 'Invalid JSON from Gemini',
-          rawText: cleaned,
-        });
-      }
+    const objectMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (objectMatch) {
+      cleaned = objectMatch[0];
     }
+
+    const parsedData = JSON.parse(cleaned);
+    return res.status(200).json(parsedData);
   } catch (error) {
-    return res.status(500).json({
-      error: 'Internal server error',
-      details: error.message,
-    });
+    console.error('Gemini server error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }
