@@ -57,11 +57,9 @@ import {
   Save,
   Wallet,
   Home,
-  Smile
+  Smile,
 } from 'lucide-react';
-import FinanceSection from './FinanceSection';
 
-// --- הגדרות חיבור למסד הנתונים בענן ---
 const firebaseConfig =
   typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
 const app = initializeApp(firebaseConfig);
@@ -83,7 +81,6 @@ const App = () => {
   const [user, setUser] = useState(null);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
-  // --- ניהול מצב (State) ---
   const [activeTab, setActiveTab] = useState(() =>
     loadFromLocal('lifeos_activeTab', 'dashboard')
   );
@@ -108,19 +105,16 @@ const App = () => {
     { id: 1, text: 'לסיים קורס פיתוח אפליקציות', progress: 65, category: 'קריירה' },
     { id: 2, text: 'להתמיד ביוגה 3 פעמים בשבוע', progress: 40, category: 'בריאות' },
   ]);
-  const [goalNextSteps, setGoalNextSteps] = useState({});
 
   const [skills] = useState([
     { id: 1, name: 'בישול בריא', level: 3, xp: 45, icon: Coffee },
     { id: 2, name: 'תכנות React', level: 5, xp: 80, icon: BrainCircuit },
     { id: 3, name: 'ויסות רגשי', level: 2, xp: 20, icon: Wind },
   ]);
-  const [isSkillAILoading, setIsSkillAILoading] = useState(null);
 
   const [dopamineMenu, setDopamineMenu] = useState(null);
   const [isDopamineLoading, setIsDopamineLoading] = useState(false);
 
-  // --- פיננסים ---
   const [transactions, setTransactions] = useState(() =>
     loadFromLocal('lifeos_transactions', [])
   );
@@ -131,7 +125,6 @@ const App = () => {
     category: 'general',
   });
 
-  // --- מטלות בית ---
   const [houseChores, setHouseChores] = useState(() =>
     loadFromLocal('lifeos_houseChores', [
       { id: 1, text: 'לשטוף כלים', completed: false },
@@ -141,7 +134,6 @@ const App = () => {
   );
   const [newChore, setNewChore] = useState('');
 
-  // --- אי של סדר ---
   const [islandState, setIslandState] = useState({
     active: false,
     area: '',
@@ -151,12 +143,6 @@ const App = () => {
   });
   const [isIslandLoading, setIsIslandLoading] = useState(false);
 
-  useEffect(() => {
-    if (activeTab === 'dashboard' && !dopamineMenu && !isDopamineLoading) {
-      generateDopamineMenu();
-    }
-  }, [activeTab, energyLevel]);
-
   const [commToolMode, setCommToolMode] = useState('draft');
   const [commInput, setCommInput] = useState('');
   const [commResult, setCommResult] = useState('');
@@ -164,15 +150,11 @@ const App = () => {
   const [rsdActions, setRsdActions] = useState([]);
   const [isCommLoading, setIsCommLoading] = useState(false);
 
-  const [daySummary, setDaySummary] = useState('');
-  const [isSummarizing, setIsSummarizing] = useState(false);
-
   const [isSosOpen, setIsSosOpen] = useState(false);
   const [sosChecks, setSosChecks] = useState([]);
   const [isSosLoading, setIsSosLoading] = useState(false);
 
   const [hyperfocusInput, setHyperfocusInput] = useState('');
-
   const [waitingMode, setWaitingMode] = useState({
     active: false,
     time: '',
@@ -182,9 +164,131 @@ const App = () => {
   const [waitingSuggestions, setWaitingSuggestions] = useState(null);
   const [isWaitingLoading, setIsWaitingLoading] = useState(false);
 
-  const fileInputRef = useRef(null);
+  const [combinedSchedule] = useState([
+    {
+      id: 1,
+      time: '08:00',
+      activity: 'שגרת בוקר',
+      type: 'routine',
+      routineKey: 'morning',
+      icon: Sun,
+      duration: '60 min',
+    },
+    {
+      id: 2,
+      time: '09:00',
+      activity: 'עבודה ממוקדת',
+      type: 'work',
+      icon: Zap,
+      duration: '180 min',
+    },
+    {
+      id: 3,
+      time: '12:00',
+      activity: 'ארוחת צהריים',
+      type: 'health',
+      icon: Coffee,
+      duration: '60 min',
+    },
+    {
+      id: 4,
+      time: '14:00',
+      activity: 'פגישת צוות',
+      type: 'work',
+      icon: MessageCircle,
+      duration: '90 min',
+    },
+    {
+      id: 5,
+      time: '16:00',
+      activity: 'זמן יצירה',
+      type: 'personal',
+      icon: Star,
+      duration: '120 min',
+    },
+    {
+      id: 6,
+      time: '19:00',
+      activity: 'אימון ערב',
+      type: 'health',
+      icon: Dumbbell,
+      duration: '45 min',
+    },
+    {
+      id: 7,
+      time: '22:00',
+      activity: 'הכנה לשינה',
+      type: 'routine',
+      routineKey: 'sleep',
+      icon: Moon,
+      duration: '45 min',
+    },
+  ]);
 
-  // --- אימות ---
+  const [habitStacks] = useState([
+    {
+      id: 'morning',
+      name: 'שגרת בוקר',
+      icon: Sun,
+      steps: [
+        { text: 'שתיית כוס מים', icon: 'GlassWater' },
+        { text: "מתיחות קלות (2 דק')", icon: 'Dumbbell' },
+        { text: 'בדיקת לו"ז יומי', icon: 'Calendar' },
+        { text: 'נשימה עמוקה וכניסה ליום', icon: 'Wind' },
+      ],
+    },
+    {
+      id: 'sleep',
+      name: 'הכנה לשינה',
+      icon: Moon,
+      steps: [
+        { text: 'ארגון השולחן למחר', icon: 'LayoutDashboard' },
+        { text: 'כיבוי מסכים כחולים', icon: 'Smartphone' },
+        { text: 'הכנת בגדים למחר', icon: 'CheckCircle2' },
+        { text: 'קריאה של 5 דקות', icon: 'BookOpen' },
+      ],
+    },
+  ]);
+
+  const [activeHabitStack, setActiveHabitStack] = useState(null);
+
+  const [timerMode, setTimerMode] = useState('work');
+  const [timeLeft, setTimeLeft] = useState(25 * 60);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [focusTask, setFocusTask] = useState(null);
+  const [isFocusActive, setIsFocusActive] = useState(false);
+  const [isTimerMinimized, setIsTimerMinimized] = useState(false);
+  const [rewardSuggestion, setRewardSuggestion] = useState(null);
+
+  const [transitionSteps, setTransitionSteps] = useState([]);
+  const [bodyDoubleInput, setBodyDoubleInput] = useState('');
+  const [bodyDoubleChat, setBodyDoubleChat] = useState([]);
+
+  const [prepSteps, setPrepSteps] = useState([]);
+  const [currentPrepStep, setCurrentPrepStep] = useState(0);
+  const [isAILoading, setIsAILoading] = useState(false);
+  const [aiMessage, setAiMessage] = useState('');
+  const [isBreakingDown, setIsBreakingDown] = useState(null);
+  const [isSorting, setIsSorting] = useState(false);
+  const [taskStrategy, setTaskStrategy] = useState(null);
+  const [isStrategyLoading, setIsStrategyLoading] = useState(null);
+
+  const [isHelperOpen, setIsHelperOpen] = useState(false);
+  const [hasHelperBeenOffered, setHasHelperBeenOffered] = useState(false);
+  const [helperChat, setHelperChat] = useState([]);
+  const [helperInput, setHelperInput] = useState('');
+  const [isHelperAILoading, setIsHelperAILoading] = useState(false);
+
+  const fileInputRef = useRef(null);
+  const timerRef = useRef(null);
+  const autoHelperTimerRef = useRef(null);
+
+  useEffect(() => {
+    if (activeTab === 'dashboard' && !dopamineMenu && !isDopamineLoading) {
+      generateDopamineMenu();
+    }
+  }, [activeTab, energyLevel]);
+
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -204,7 +308,6 @@ const App = () => {
     return () => unsubscribe();
   }, []);
 
-  // --- סנכרון אוטומטי ---
   useEffect(() => {
     if (!user) return;
 
@@ -217,30 +320,21 @@ const App = () => {
         if (snapshot.exists()) {
           const data = snapshot.data();
 
-          if (data.tasks && data.tasks.length > 0) {
+          if (data.tasks) {
             setTasks(data.tasks);
             window.localStorage.setItem('lifeos_tasks', JSON.stringify(data.tasks));
           }
           if (data.transactions) {
             setTransactions(data.transactions);
-            window.localStorage.setItem(
-              'lifeos_transactions',
-              JSON.stringify(data.transactions)
-            );
+            window.localStorage.setItem('lifeos_transactions', JSON.stringify(data.transactions));
           }
           if (data.houseChores) {
             setHouseChores(data.houseChores);
-            window.localStorage.setItem(
-              'lifeos_houseChores',
-              JSON.stringify(data.houseChores)
-            );
+            window.localStorage.setItem('lifeos_houseChores', JSON.stringify(data.houseChores));
           }
           if (data.brainDump !== undefined) {
             setBrainDump(data.brainDump);
-            window.localStorage.setItem(
-              'lifeos_brainDump',
-              JSON.stringify(data.brainDump)
-            );
+            window.localStorage.setItem('lifeos_brainDump', JSON.stringify(data.brainDump));
           }
           if (data.vision) {
             setVision(data.vision);
@@ -248,17 +342,11 @@ const App = () => {
           }
           if (data.energyLevel) {
             setEnergyLevel(data.energyLevel);
-            window.localStorage.setItem(
-              'lifeos_energyLevel',
-              JSON.stringify(data.energyLevel)
-            );
+            window.localStorage.setItem('lifeos_energyLevel', JSON.stringify(data.energyLevel));
           }
           if (data.activeTab) {
             setActiveTab(data.activeTab);
-            window.localStorage.setItem(
-              'lifeos_activeTab',
-              JSON.stringify(data.activeTab)
-            );
+            window.localStorage.setItem('lifeos_activeTab', JSON.stringify(data.activeTab));
           }
         }
         setIsDataLoaded(true);
@@ -271,6 +359,57 @@ const App = () => {
 
     return () => unsubscribe();
   }, [user]);
+
+  useEffect(() => {
+    if (isFocusActive && !isTimerMinimized) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [isFocusActive, isTimerMinimized]);
+
+  useEffect(() => {
+    if (focusTask && !isFocusActive && !hasHelperBeenOffered && timerMode !== 'hyperfocus') {
+      autoHelperTimerRef.current = setTimeout(() => {
+        if (!isFocusActive && !hasHelperBeenOffered) openHelper();
+      }, 20000);
+    } else if (autoHelperTimerRef.current) {
+      clearTimeout(autoHelperTimerRef.current);
+    }
+
+    return () => {
+      if (autoHelperTimerRef.current) clearTimeout(autoHelperTimerRef.current);
+    };
+  }, [focusTask, isFocusActive, hasHelperBeenOffered, timerMode]);
+
+  useEffect(() => {
+    const clock = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(clock);
+  }, []);
+
+  useEffect(() => {
+    if (isTimerRunning && timeLeft > 0) {
+      timerRef.current = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
+    } else if (timeLeft === 0 && isTimerRunning) {
+      clearInterval(timerRef.current);
+      setIsTimerRunning(false);
+      handleTimerEnd();
+    } else {
+      clearInterval(timerRef.current);
+    }
+
+    return () => clearInterval(timerRef.current);
+  }, [isTimerRunning, timeLeft, timerMode]);
+
+  useEffect(() => {
+    let interval = null;
+    if (islandState.isRunning && islandState.timeLeft > 0) {
+      interval = setInterval(() => {
+        setIslandState((prev) => ({ ...prev, timeLeft: prev.timeLeft - 1 }));
+      }, 1000);
+    } else if (islandState.isRunning && islandState.timeLeft === 0) {
+      setIslandState((prev) => ({ ...prev, isRunning: false, completed: true }));
+    }
+    return () => clearInterval(interval);
+  }, [islandState.isRunning, islandState.timeLeft]);
 
   const saveToCloud = (data) => {
     if (!user || !isDataLoaded) return;
@@ -287,7 +426,7 @@ const App = () => {
       const next = typeof action === 'function' ? action(prev) : action;
       try {
         window.localStorage.setItem('lifeos_tasks', JSON.stringify(next));
-      } catch (e) {}
+      } catch {}
       saveToCloud({ tasks: next });
       return next;
     });
@@ -298,7 +437,7 @@ const App = () => {
       const next = typeof action === 'function' ? action(prev) : action;
       try {
         window.localStorage.setItem('lifeos_brainDump', JSON.stringify(next));
-      } catch (e) {}
+      } catch {}
       saveToCloud({ brainDump: next });
       return next;
     });
@@ -309,7 +448,7 @@ const App = () => {
       const next = typeof action === 'function' ? action(prev) : action;
       try {
         window.localStorage.setItem('lifeos_vision', JSON.stringify(next));
-      } catch (e) {}
+      } catch {}
       saveToCloud({ vision: next });
       return next;
     });
@@ -320,7 +459,7 @@ const App = () => {
       const next = typeof action === 'function' ? action(prev) : action;
       try {
         window.localStorage.setItem('lifeos_energyLevel', JSON.stringify(next));
-      } catch (e) {}
+      } catch {}
       saveToCloud({ energyLevel: next });
       return next;
     });
@@ -331,7 +470,7 @@ const App = () => {
       const next = typeof action === 'function' ? action(prev) : action;
       try {
         window.localStorage.setItem('lifeos_activeTab', JSON.stringify(next));
-      } catch (e) {}
+      } catch {}
       saveToCloud({ activeTab: next });
       return next;
     });
@@ -342,7 +481,7 @@ const App = () => {
       const next = typeof action === 'function' ? action(prev) : action;
       try {
         window.localStorage.setItem('lifeos_houseChores', JSON.stringify(next));
-      } catch (e) {}
+      } catch {}
       saveToCloud({ houseChores: next });
       return next;
     });
@@ -351,7 +490,6 @@ const App = () => {
   const addChore = (e) => {
     if (e) e.preventDefault();
     if (!newChore.trim()) return;
-
     updateHouseChores((prev) => [
       { id: Date.now(), text: newChore.trim(), completed: false },
       ...prev,
@@ -404,14 +542,11 @@ const App = () => {
   };
 
   const financeStats = () => {
-    const exp = transactions
-      .filter((t) => t.type === 'expense')
-      .reduce((s, t) => s + t.amount, 0);
-    const inc = transactions
-      .filter((t) => t.type === 'income')
-      .reduce((s, t) => s + t.amount, 0);
+    const exp = transactions.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    const inc = transactions.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0);
     return { expenses: exp, income: inc, balance: inc - exp };
   };
+
   const { expenses, balance } = financeStats();
 
   const exportData = () => {
@@ -431,9 +566,7 @@ const App = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `LifeOS_Backup_${new Date()
-      .toLocaleDateString()
-      .replace(/\//g, '-')}.json`;
+    link.download = `LifeOS_Backup_${new Date().toLocaleDateString().replace(/\//g, '-')}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -449,10 +582,7 @@ const App = () => {
         if (data.tasks) updateTasks(data.tasks);
         if (data.transactions) {
           setTransactions(data.transactions);
-          window.localStorage.setItem(
-            'lifeos_transactions',
-            JSON.stringify(data.transactions)
-          );
+          window.localStorage.setItem('lifeos_transactions', JSON.stringify(data.transactions));
           saveToCloud({ transactions: data.transactions });
         }
         if (data.houseChores) updateHouseChores(data.houseChores);
@@ -468,102 +598,6 @@ const App = () => {
     reader.readAsText(file);
   };
 
-  const [combinedSchedule] = useState([
-    {
-      id: 1,
-      time: '08:00',
-      activity: 'שגרת בוקר',
-      type: 'routine',
-      routineKey: 'morning',
-      icon: Sun,
-      color: 'text-amber-500',
-      duration: '60 min',
-    },
-    {
-      id: 2,
-      time: '09:00',
-      activity: 'עבודה ממוקדת',
-      type: 'work',
-      icon: Zap,
-      color: 'text-indigo-500',
-      duration: '180 min',
-    },
-    {
-      id: 3,
-      time: '12:00',
-      activity: 'ארוחת צהריים',
-      type: 'health',
-      icon: Coffee,
-      color: 'text-emerald-500',
-      duration: '60 min',
-    },
-    {
-      id: 4,
-      time: '14:00',
-      activity: 'פגישת צוות',
-      type: 'work',
-      icon: MessageCircle,
-      color: 'text-indigo-500',
-      duration: '90 min',
-    },
-    {
-      id: 5,
-      time: '16:00',
-      activity: 'זמן יצירה',
-      type: 'personal',
-      icon: Star,
-      color: 'text-purple-500',
-      duration: '120 min',
-    },
-    {
-      id: 6,
-      time: '19:00',
-      activity: 'אימון ערב',
-      type: 'health',
-      icon: Dumbbell,
-      color: 'text-rose-500',
-      duration: '45 min',
-    },
-    {
-      id: 7,
-      time: '22:00',
-      activity: 'הכנה לשינה',
-      type: 'routine',
-      routineKey: 'sleep',
-      icon: Moon,
-      color: 'text-indigo-400',
-      duration: '45 min',
-    },
-  ]);
-
-  const [habitStacks] = useState([
-    {
-      id: 'morning',
-      name: 'שגרת בוקר',
-      icon: Sun,
-      color: 'text-amber-500',
-      steps: [
-        { text: 'שתיית כוס מים', icon: 'GlassWater' },
-        { text: "מתיחות קלות (2 דק')", icon: 'Dumbbell' },
-        { text: 'בדיקת לו"ז יומי', icon: 'Calendar' },
-        { text: 'נשימה עמוקה וכניסה ליום', icon: 'Wind' },
-      ],
-    },
-    {
-      id: 'sleep',
-      name: 'הכנה לשינה',
-      icon: Moon,
-      color: 'text-indigo-400',
-      steps: [
-        { text: 'ארגון השולחן למחר', icon: 'LayoutDashboard' },
-        { text: 'כיבוי מסכים כחולים', icon: 'Smartphone' },
-        { text: 'הכנת בגדים למחר', icon: 'CheckCircle2' },
-        { text: 'קריאה של 5 דקות', icon: 'BookOpen' },
-      ],
-    },
-  ]);
-  const [activeHabitStack, setActiveHabitStack] = useState(null);
-
   const getActiveScheduleItem = () => {
     const nowStr = currentTime.toLocaleTimeString('he-IL', {
       hour: '2-digit',
@@ -576,93 +610,11 @@ const App = () => {
 
   const activeScheduleItem = getActiveScheduleItem();
 
-  const [timerMode, setTimerMode] = useState('work');
-  const [timeLeft, setTimeLeft] = useState(25 * 60);
-  const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [focusTask, setFocusTask] = useState(null);
-  const [isFocusActive, setIsFocusActive] = useState(false);
-  const [isTimerMinimized, setIsTimerMinimized] = useState(false);
-  const [rewardSuggestion, setRewardSuggestion] = useState(null);
-  const timerRef = useRef(null);
-  const autoHelperTimerRef = useRef(null);
-
-  const [transitionSteps, setTransitionSteps] = useState([]);
-  const [bodyDoubleInput, setBodyDoubleInput] = useState('');
-  const [bodyDoubleChat, setBodyDoubleChat] = useState([]);
-
-  const [prepSteps, setPrepSteps] = useState([]);
-  const [currentPrepStep, setCurrentPrepStep] = useState(0);
-  const [isAILoading, setIsAILoading] = useState(false);
-  const [aiMessage, setAiMessage] = useState('');
-  const [isBreakingDown, setIsBreakingDown] = useState(null);
-  const [isSorting, setIsSorting] = useState(false);
-  const [taskStrategy, setTaskStrategy] = useState(null);
-  const [isStrategyLoading, setIsStrategyLoading] = useState(null);
-
-  const [isHelperOpen, setIsHelperOpen] = useState(false);
-  const [hasHelperBeenOffered, setHasHelperBeenOffered] = useState(false);
-  const [helperChat, setHelperChat] = useState([]);
-  const [helperInput, setHelperInput] = useState('');
-  const [isHelperAILoading, setIsHelperAILoading] = useState(false);
-
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs
-      .toString()
-      .padStart(2, '0')}`;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
-
-  useEffect(() => {
-    if (isFocusActive && !isTimerMinimized) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  }, [isFocusActive, isTimerMinimized]);
-
-  useEffect(() => {
-    if (focusTask && !isFocusActive && !hasHelperBeenOffered && timerMode !== 'hyperfocus') {
-      autoHelperTimerRef.current = setTimeout(() => {
-        if (!isFocusActive && !hasHelperBeenOffered) {
-          openHelper();
-        }
-      }, 20000);
-    } else {
-      if (autoHelperTimerRef.current) clearTimeout(autoHelperTimerRef.current);
-    }
-    return () => {
-      if (autoHelperTimerRef.current) clearTimeout(autoHelperTimerRef.current);
-    };
-  }, [focusTask, isFocusActive, hasHelperBeenOffered, timerMode]);
-
-  useEffect(() => {
-    const clock = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(clock);
-  }, []);
-
-  useEffect(() => {
-    if (isTimerRunning && timeLeft > 0) {
-      timerRef.current = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
-    } else if (timeLeft === 0 && isTimerRunning) {
-      clearInterval(timerRef.current);
-      setIsTimerRunning(false);
-      handleTimerEnd();
-    } else {
-      clearInterval(timerRef.current);
-    }
-    return () => clearInterval(timerRef.current);
-  }, [isTimerRunning, timeLeft, timerMode]);
-
-  useEffect(() => {
-    let interval = null;
-    if (islandState.isRunning && islandState.timeLeft > 0) {
-      interval = setInterval(() => {
-        setIslandState((prev) => ({ ...prev, timeLeft: prev.timeLeft - 1 }));
-      }, 1000);
-    } else if (islandState.isRunning && islandState.timeLeft === 0) {
-      setIslandState((prev) => ({ ...prev, isRunning: false, completed: true }));
-    }
-    return () => clearInterval(interval);
-  }, [islandState.isRunning, islandState.timeLeft]);
 
   const callGemini = async (
     prompt,
@@ -706,7 +658,7 @@ const App = () => {
       try {
         const initialMsg = await callGemini('Start', systemPrompt);
         setHelperChat([{ role: 'ai', text: initialMsg }]);
-      } catch (e) {
+      } catch {
         setHelperChat([
           { role: 'ai', text: 'היי, שמתי לב שקצת קשה להתחיל. מה עוצר אותך כרגע במשימה הזו?' },
         ]);
@@ -748,7 +700,7 @@ const App = () => {
         'קחי נשימה עמוקה ועזבי את המקלדת',
         'שמרי את מה שעשית עד עכשיו',
       ]);
-    } catch (e) {
+    } catch {
       setTransitionSteps([
         'קחי נשימה עמוקה והרפי את הכתפיים',
         'סגרי בעדינות את החלון שעבדת עליו',
@@ -768,7 +720,7 @@ const App = () => {
         );
         const data = JSON.parse(res);
         setSosChecks(data.checks || []);
-      } catch (e) {
+      } catch {
         setSosChecks([
           { text: 'מתי שתית מים לאחרונה?', icon: 'Droplets' },
           { text: 'קר או חם לך מדי עכשיו?', icon: 'Wind' },
@@ -806,7 +758,7 @@ const App = () => {
         });
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
-    } catch (e) {
+    } catch {
     } finally {
       setIsSorting(false);
     }
@@ -867,7 +819,7 @@ const App = () => {
       const res = await callGemini(prompt, sys, 'application/json');
       const data = JSON.parse(res);
       setWaitingSuggestions(data);
-    } catch (e) {
+    } catch {
       setWaitingSuggestions({
         message: `יש לך ${safeMins} דקות בטוחות לחלוטין! הכל בסדר.`,
         suggestions: ['לשמוע שיר אחד אהוב', 'לעשות מתיחה קטנה או לשתות מים'],
@@ -875,11 +827,6 @@ const App = () => {
     } finally {
       setIsWaitingLoading(false);
     }
-  };
-
-  const cancelWaitingMode = () => {
-    setWaitingMode({ active: false, time: '', activity: '', isManual: false });
-    setWaitingSuggestions(null);
   };
 
   const handleBodyDoubleChat = async () => {
@@ -893,7 +840,7 @@ const App = () => {
         'You are a virtual body double working silently alongside the user. Acknowledge their update with 3-5 extremely brief encouraging words in Hebrew.'
       );
       setBodyDoubleChat((prev) => [...prev, { text: res, isUser: false }]);
-    } catch (e) {}
+    } catch {}
   };
 
   const startPrepare = (taskToPrepare) => {
@@ -904,19 +851,6 @@ const App = () => {
     setTimeLeft(5 * 60);
     setIsTimerRunning(true);
     generateAIChecklist(taskToPrepare.text);
-  };
-
-  const startHabitStack = (stack) => {
-    setFocusTask(null);
-    setIsFocusActive(true);
-    setActiveHabitStack(stack);
-    updateActiveTab('dashboard');
-    setIsTimerMinimized(false);
-    setTimerMode('prepare');
-    setTimeLeft(10 * 60);
-    setCurrentPrepStep(0);
-    setPrepSteps(stack.steps.map((s, i) => ({ ...s, id: i, done: false })));
-    setIsTimerRunning(true);
   };
 
   const handleSmartReorder = async () => {
@@ -933,7 +867,7 @@ const App = () => {
         (a, b) => result.order.indexOf(a.id) - result.order.indexOf(b.id)
       );
       updateTasks(sorted);
-    } catch (e) {
+    } catch {
     } finally {
       setIsSorting(false);
     }
@@ -976,7 +910,7 @@ const App = () => {
     try {
       const res = await callGemini(`Strategy: ${task.text}`, 'Focus strategy. Hebrew. 1 sentence.');
       setTaskStrategy({ taskId: task.id, message: res });
-    } catch (e) {
+    } catch {
     } finally {
       setIsStrategyLoading(null);
     }
@@ -1011,7 +945,7 @@ const App = () => {
       if (data.menu) {
         setDopamineMenu(data.menu);
       }
-    } catch (e) {
+    } catch {
       setDopamineMenu([
         { title: 'לשתות מים קרים', desc: 'לקום ולמזוג כוס מים עם הרבה קרח' },
         { title: 'שיר אהוב', desc: 'לשים באוזניות את השיר שהכי מרים אותך עכשיו' },
@@ -1033,7 +967,7 @@ const App = () => {
         isRunning: true,
         completed: false,
       });
-    } catch (e) {
+    } catch {
       setIslandState({
         active: true,
         area: 'רק השולחן בדיוק מולך',
@@ -1065,44 +999,10 @@ const App = () => {
         setRsdActions(data.actions || []);
         setCommResult('');
       }
-    } catch (e) {
+    } catch {
       setCommResult('מצטער, הייתה שגיאה בפענוח. נסי שוב.');
     } finally {
       setIsCommLoading(false);
-    }
-  };
-
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text);
-  };
-
-  const generateDaySummary = async () => {
-    setIsSummarizing(true);
-    try {
-      const completedTasks = tasks.filter((t) => t.completed).map((t) => t.text).join(', ');
-      const prompt = `Completed tasks today: ${completedTasks || 'None fully checked off, but I tried to survive.'}`;
-      const systemInstruction = `You are a highly empathetic and encouraging AuDHD life coach. Write a short validating summary. Maximum 2-3 short sentences. Respond ONLY in Hebrew.`;
-      const res = await callGemini(prompt, systemInstruction);
-      setDaySummary(res);
-    } catch (e) {
-      setDaySummary('את עושה עבודה מדהימה, גם בימים שקשה לראות את זה. כל הכבוד על המאמץ! ✨');
-    } finally {
-      setIsSummarizing(false);
-    }
-  };
-
-  const getGoalNextStep = async (goal) => {
-    setGoalNextSteps((prev) => ({ ...prev, [goal.id]: { loading: true } }));
-    try {
-      const prompt = `Goal: "${goal.text}"`;
-      const systemInstruction = `You are an AuDHD productivity coach. Give exactly ONE microscopic next step. Respond in Hebrew.`;
-      const res = await callGemini(prompt, systemInstruction);
-      setGoalNextSteps((prev) => ({ ...prev, [goal.id]: { text: res, loading: false } }));
-    } catch (e) {
-      setGoalNextSteps((prev) => ({
-        ...prev,
-        [goal.id]: { text: 'נסי לפתוח את הקובץ הרלוונטי למטרה.', loading: false },
-      }));
     }
   };
 
@@ -1116,7 +1016,7 @@ const App = () => {
     try {
       const response = await callGemini(`User: ${userMsg}`, systemPrompt);
       setHelperChat((prev) => [...prev, { role: 'ai', text: response }]);
-    } catch (e) {
+    } catch {
       setHelperChat((prev) => [...prev, { role: 'ai', text: 'אני כאן. נסה רק דקה אחת?' }]);
     } finally {
       setIsHelperAILoading(false);
@@ -1135,10 +1035,7 @@ const App = () => {
     setRewardSuggestion(null);
     setCurrentPrepStep(0);
     setHelperChat([]);
-    if (!skipStrategy) {
-      getTaskStrategy(task);
-    }
-
+    if (!skipStrategy) getTaskStrategy(task);
     if (!task.subTasks || task.subTasks.length === 0) {
       breakdownTask(task.id, task.text);
     }
@@ -1149,7 +1046,7 @@ const App = () => {
     try {
       const res = await callGemini(`Tiny: ${text}`, 'Rewrite tiny. Hebrew. 1 sentence.');
       updateTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, text: res } : t)));
-    } catch (e) {
+    } catch {
     } finally {
       setIsAILoading(false);
     }
@@ -1176,7 +1073,7 @@ const App = () => {
         ...prev,
       ]);
       updateBrainDump('');
-    } catch (e) {
+    } catch {
     } finally {
       setIsAILoading(false);
     }
@@ -1228,7 +1125,7 @@ const App = () => {
             : t
         )
       );
-    } catch (error) {
+    } catch {
       updateTasks((prev) =>
         prev.map((t) =>
           t.id === tempId ? { ...t, energyRequired: 'medium', emoji: '📝' } : t
@@ -1250,18 +1147,6 @@ const App = () => {
           : t
       )
     );
-  };
-
-  const getSkillTip = async (skillName) => {
-    setIsSkillAILoading(skillName);
-    const systemPrompt = `AuDHD Skill Coach. Give 1 tiny tip. Hebrew. 1 sentence.`;
-    try {
-      const tip = await callGemini(`Skill: ${skillName}`, systemPrompt);
-      setAiMessage(tip);
-    } catch (e) {
-    } finally {
-      setIsSkillAILoading(null);
-    }
   };
 
   const completeStep = (index) => {
@@ -1405,9 +1290,7 @@ const App = () => {
                 <div className="flex justify-start animate-pulse">
                   <div className="bg-white p-4 rounded-3xl rounded-tr-none border border-slate-100 shadow-sm flex items-center gap-2">
                     <Loader2 className="animate-spin text-indigo-400" size={14} />
-                    <span className="text-xs text-slate-400 font-bold italic">
-                      ה-AI חושב...
-                    </span>
+                    <span className="text-xs text-slate-400 font-bold italic">ה-AI חושב...</span>
                   </div>
                 </div>
               )}
@@ -1764,7 +1647,7 @@ const App = () => {
                   <h3 className="text-xl font-bold flex items-center gap-3 text-slate-800">
                     <ListTodo size={24} className="text-indigo-600" /> מה כדאי לעשות עכשיו?
                   </h3>
-                  <div className="flex items-center gap-2 p-1.5 bg-slate-50 border border-slate-100 rounded-3xl animate-in fade-in slide-in-from-left duration-1000 delay-500 attention-glow">
+                  <div className="flex items-center gap-2 p-1.5 bg-slate-50 border border-slate-100 rounded-3xl">
                     <div className="flex flex-col gap-1 pr-1 pl-2">
                       <span className="text-[11px] font-bold text-slate-500 leading-none">
                         כמה אנרגיה יש לי עכשיו?
@@ -1805,12 +1688,11 @@ const App = () => {
                       ))}
                     </div>
                     <div className="w-px h-6 bg-slate-200 mx-1" />
-
                     <button
                       onClick={handleSmartRoulette}
                       disabled={isSorting}
                       className="p-2 text-indigo-600 hover:bg-white rounded-2xl transition-all disabled:opacity-50"
-                      title="רולטת החלטות - תחליט בשבילי"
+                      title="רולטת החלטות"
                     >
                       {isSorting ? <Loader2 size={16} className="animate-spin" /> : <Dices size={16} />}
                     </button>
@@ -1845,19 +1727,11 @@ const App = () => {
                 </form>
 
                 <div className="space-y-3">
-                  {tasks.filter(
-                    (t) => !t.completed && (t.energyRequired === energyLevel || t.energyRequired === 'analyzing')
-                  ).length === 0 && (
-                    <div className="p-10 text-center bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200 animate-in fade-in zoom-in-95 duration-500">
-                      <p className="text-slate-400 font-bold italic text-sm">
-                        אין משימות לרמת האנרגיה הזו. אולי זה זמן לנוח? ☕
-                      </p>
-                    </div>
-                  )}
-
                   {tasks
                     .filter(
-                      (t) => !t.completed && (t.energyRequired === energyLevel || t.energyRequired === 'analyzing')
+                      (t) =>
+                        !t.completed &&
+                        (t.energyRequired === energyLevel || t.energyRequired === 'analyzing')
                     )
                     .map((task) => (
                       <div
@@ -1871,11 +1745,7 @@ const App = () => {
                         <div className="flex items-center gap-4">
                           <button
                             onClick={() =>
-                              updateTasks(
-                                tasks.map((t) =>
-                                  t.id === task.id ? { ...t, completed: true } : t
-                                )
-                              )
+                              updateTasks(tasks.map((t) => (t.id === task.id ? { ...t, completed: true } : t)))
                             }
                             className="transition-transform active:scale-75"
                           >
@@ -1904,14 +1774,12 @@ const App = () => {
                                 focusTask?.id === task.id ? 'text-indigo-900' : 'text-slate-800'
                               }`}
                             >
-                              <span className="ml-2 inline-block align-middle">
-                                {task.emoji || '📝'}
-                              </span>
+                              <span className="ml-2 inline-block align-middle">{task.emoji || '📝'}</span>
                               {task.text}
                             </span>
 
                             {taskStrategy?.taskId === task.id && focusTask?.id === task.id && (
-                              <p className="text-[11px] text-indigo-600 font-medium mt-1 italic animate-in slide-in-from-right-2 line-clamp-1">
+                              <p className="text-[11px] text-indigo-600 font-medium mt-1 italic line-clamp-1">
                                 {taskStrategy.message}
                               </p>
                             )}
@@ -1993,7 +1861,7 @@ const App = () => {
                             ) : (
                               task.subTasks &&
                               task.subTasks.length > 0 && (
-                                <div className="mr-8 space-y-1.5 border-r-2 border-indigo-100/50 pr-4 animate-in slide-in-from-top-1 duration-300">
+                                <div className="mr-8 space-y-1.5 border-r-2 border-indigo-100/50 pr-4">
                                   {task.subTasks.map((st) => (
                                     <div
                                       key={st.id}
@@ -2040,11 +1908,7 @@ const App = () => {
                     disabled={isAILoading || !brainDump.trim()}
                     className="px-4 py-2 bg-amber-500 text-white rounded-2xl text-xs font-black shadow-md hover:bg-amber-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    {isAILoading ? (
-                      <Loader2 size={14} className="animate-spin" />
-                    ) : (
-                      <Sparkles size={14} />
-                    )}
+                    {isAILoading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                     הפוך למשימות
                   </button>
                 </div>
@@ -2125,12 +1989,7 @@ const App = () => {
                     disabled={isDopamineLoading}
                     className="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-all shadow-sm flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider disabled:opacity-50"
                   >
-                    {isDopamineLoading ? (
-                      <Loader2 size={12} className="animate-spin" />
-                    ) : (
-                      <RotateCcw size={12} />
-                    )}{' '}
-                    רענן
+                    {isDopamineLoading ? <Loader2 size={12} className="animate-spin" /> : <RotateCcw size={12} />} רענן
                   </button>
                 </div>
                 {isDopamineLoading && (
@@ -2195,12 +2054,6 @@ const App = () => {
                 </form>
 
                 <div className="space-y-2">
-                  {houseChores.length === 0 && (
-                    <div className="text-center py-6 text-slate-400 font-bold italic text-sm">
-                      אין מטלות בית כרגע ✨
-                    </div>
-                  )}
-
                   {houseChores.slice(0, 5).map((chore) => (
                     <div
                       key={chore.id}
@@ -2217,9 +2070,7 @@ const App = () => {
                       <div className="flex-1">
                         <p
                           className={`text-sm font-bold ${
-                            chore.completed
-                              ? 'line-through text-slate-300'
-                              : 'text-slate-700'
+                            chore.completed ? 'line-through text-slate-300' : 'text-slate-700'
                           }`}
                         >
                           {chore.text}
@@ -2242,14 +2093,134 @@ const App = () => {
         )}
 
         {activeTab === 'finance' && (
-          <FinanceSection
-            balance={balance}
-            transactions={transactions}
-            newTransaction={newTransaction}
-            setNewTransaction={setNewTransaction}
-            addTransaction={addTransaction}
-            deleteTransaction={deleteTransaction}
-          />
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <header className="flex justify-between items-end mb-4">
+              <div>
+                <h2 className="text-4xl font-black italic">ניהול פיננסי</h2>
+                <p className="text-slate-500 font-bold">כי כסף זה רק כלי ליצירת שקט</p>
+              </div>
+
+              <div className="flex gap-4">
+                <div className="bg-white p-4 px-6 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-4">
+                  <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center">
+                    <Wallet size={24} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      יתרה זמינה
+                    </p>
+                    <p className="text-xl font-black text-emerald-900">₪{balance}</p>
+                  </div>
+                </div>
+              </div>
+            </header>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-1 space-y-6">
+                <section className="bg-white p-8 rounded-[3rem] shadow-sm border border-slate-200/50">
+                  <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                    <Plus size={20} className="text-indigo-600" />
+                    הזנה מהירה
+                  </h3>
+
+                  <div className="space-y-4">
+                    <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl">
+                      <button
+                        onClick={() => setNewTransaction({ ...newTransaction, type: 'expense' })}
+                        className={`flex-1 py-2 rounded-xl text-xs font-black transition-all ${
+                          newTransaction.type === 'expense'
+                            ? 'bg-rose-500 text-white shadow-md'
+                            : 'text-slate-400'
+                        }`}
+                      >
+                        הוצאה
+                      </button>
+                      <button
+                        onClick={() => setNewTransaction({ ...newTransaction, type: 'income' })}
+                        className={`flex-1 py-2 rounded-xl text-xs font-black transition-all ${
+                          newTransaction.type === 'income'
+                            ? 'bg-emerald-500 text-white shadow-md'
+                            : 'text-slate-400'
+                        }`}
+                      >
+                        הכנסה
+                      </button>
+                    </div>
+
+                    <input
+                      type="text"
+                      placeholder="מה קנינו?"
+                      value={newTransaction.description}
+                      onChange={(e) =>
+                        setNewTransaction({ ...newTransaction, description: e.target.value })
+                      }
+                      className="w-full bg-slate-50 p-4 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-100 font-bold text-sm"
+                    />
+
+                    <input
+                      type="number"
+                      placeholder="כמה זה עלה?"
+                      value={newTransaction.amount}
+                      onChange={(e) =>
+                        setNewTransaction({ ...newTransaction, amount: e.target.value })
+                      }
+                      className="w-full bg-slate-50 p-4 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-100 font-bold text-sm"
+                    />
+
+                    <button
+                      onClick={addTransaction}
+                      className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-lg"
+                    >
+                      שמור תנועה
+                    </button>
+                  </div>
+                </section>
+              </div>
+
+              <div className="lg:col-span-2">
+                <section className="bg-white p-8 rounded-[3rem] shadow-sm border border-slate-200/50 h-full">
+                  <h3 className="text-xl font-bold flex items-center gap-2 mb-8">
+                    <Wallet size={24} className="text-indigo-600" />
+                    היסטוריית תנועות
+                  </h3>
+
+                  <div className="space-y-3">
+                    {transactions.length === 0 && (
+                      <div className="text-center py-20 opacity-30 italic font-bold">
+                        אין תנועות עדיין...
+                      </div>
+                    )}
+
+                    {transactions.map((t) => (
+                      <div
+                        key={t.id}
+                        className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-all group"
+                      >
+                        <div className="font-bold">{t.description}</div>
+
+                        <div className="flex items-center gap-4">
+                          <p
+                            className={`font-black ${
+                              t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'
+                            }`}
+                          >
+                            {t.type === 'income' ? '+' : '-'}₪{t.amount}
+                          </p>
+
+                          <button
+                            onClick={() => deleteTransaction(t.id)}
+                            className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
         )}
 
         {activeTab === 'tasks' && (
@@ -2319,77 +2290,73 @@ const App = () => {
               </form>
 
               <div className="space-y-4">
-                {tasks
-                  .filter((t) => !t.completed)
-                  .map((task) => (
-                    <div
-                      key={task.id}
-                      className={`rounded-[2rem] border-2 transition-all group ${
-                        energyLevel === task.energyRequired
-                          ? 'bg-indigo-50 border-indigo-200'
-                          : 'border-transparent hover:bg-slate-50'
-                      }`}
-                    >
-                      <div className="flex items-start gap-4 p-5">
-                        <button
-                          onClick={() =>
-                            updateTasks(
-                              tasks.map((t) =>
-                                t.id === task.id ? { ...t, completed: true } : t
-                              )
-                            )
-                          }
-                          className="transition-transform active:scale-75 mt-1"
-                        >
-                          {task.energyRequired === 'analyzing' ? (
-                            <Loader2 className="animate-spin text-indigo-400" size={24} />
-                          ) : (
-                            <Circle
-                              className={`hover:text-indigo-500 transition-colors ${
-                                task.energyRequired === 'low'
-                                  ? 'text-rose-500'
-                                  : task.energyRequired === 'medium'
-                                  ? 'text-amber-500'
-                                  : 'text-emerald-500'
-                              }`}
-                              size={24}
-                            />
-                          )}
-                        </button>
-                        <div className="flex-1">
-                          <p
-                            className={`font-bold text-lg ${
-                              task.energyRequired !== energyLevel ? 'opacity-40' : ''
+                {tasks.filter((t) => !t.completed).map((task) => (
+                  <div
+                    key={task.id}
+                    className={`rounded-[2rem] border-2 transition-all group ${
+                      energyLevel === task.energyRequired
+                        ? 'bg-indigo-50 border-indigo-200'
+                        : 'border-transparent hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-start gap-4 p-5">
+                      <button
+                        onClick={() =>
+                          updateTasks(
+                            tasks.map((t) => (t.id === task.id ? { ...t, completed: true } : t))
+                          )
+                        }
+                        className="transition-transform active:scale-75 mt-1"
+                      >
+                        {task.energyRequired === 'analyzing' ? (
+                          <Loader2 className="animate-spin text-indigo-400" size={24} />
+                        ) : (
+                          <Circle
+                            className={`hover:text-indigo-500 transition-colors ${
+                              task.energyRequired === 'low'
+                                ? 'text-rose-500'
+                                : task.energyRequired === 'medium'
+                                ? 'text-amber-500'
+                                : 'text-emerald-500'
                             }`}
-                          >
-                            {task.emoji} {task.text}
+                            size={24}
+                          />
+                        )}
+                      </button>
+                      <div className="flex-1">
+                        <p
+                          className={`font-bold text-lg ${
+                            task.energyRequired !== energyLevel ? 'opacity-40' : ''
+                          }`}
+                        >
+                          {task.emoji} {task.text}
+                        </p>
+                        {taskStrategy?.taskId === task.id && (
+                          <p className="text-xs text-indigo-600 font-medium mt-1 italic">
+                            ✨ {taskStrategy.message}
                           </p>
-                          {taskStrategy?.taskId === task.id && (
-                            <p className="text-xs text-indigo-600 font-medium mt-1 italic">
-                              ✨ {taskStrategy.message}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => startPrepare(task)} className="p-2 text-indigo-400">
-                            <Play size={20} />
-                          </button>
-                          <button
-                            onClick={() => handleTaskRewrite(task.id, task.text)}
-                            className="p-2 text-slate-400"
-                          >
-                            <AlignLeft size={20} />
-                          </button>
-                          <button
-                            onClick={() => updateTasks(tasks.filter((t) => t.id !== task.id))}
-                            className="p-2 text-slate-300 hover:text-rose-500"
-                          >
-                            <Trash2 size={20} />
-                          </button>
-                        </div>
+                        )}
+                      </div>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => startPrepare(task)} className="p-2 text-indigo-400">
+                          <Play size={20} />
+                        </button>
+                        <button
+                          onClick={() => handleTaskRewrite(task.id, task.text)}
+                          className="p-2 text-slate-400"
+                        >
+                          <AlignLeft size={20} />
+                        </button>
+                        <button
+                          onClick={() => updateTasks(tasks.filter((t) => t.id !== task.id))}
+                          className="p-2 text-slate-300 hover:text-rose-500"
+                        >
+                          <Trash2 size={20} />
+                        </button>
                       </div>
                     </div>
-                  ))}
+                  </div>
+                ))}
               </div>
             </section>
           </div>
@@ -2662,11 +2629,7 @@ const App = () => {
                   disabled={isCommLoading}
                   className="w-full py-4 bg-white text-indigo-700 font-black text-sm rounded-2xl hover:bg-indigo-50 transition-all shadow-lg"
                 >
-                  {isCommLoading ? (
-                    <Loader2 size={20} className="animate-spin mx-auto" />
-                  ) : (
-                    'בצע פעולה'
-                  )}
+                  {isCommLoading ? <Loader2 size={20} className="animate-spin mx-auto" /> : 'בצע פעולה'}
                 </button>
                 {commResult && (
                   <div className="mt-4 p-4 bg-white text-slate-800 rounded-2xl text-sm shadow-inner">
@@ -2700,9 +2663,7 @@ const App = () => {
               }`}
             >
               <item.icon size={22} className={activeTab === item.id ? 'animate-pulse' : ''} />
-              <span className="text-[10px] font-black uppercase tracking-tight">
-                {item.label}
-              </span>
+              <span className="text-[10px] font-black uppercase tracking-tight">{item.label}</span>
             </button>
           ))}
         </nav>
