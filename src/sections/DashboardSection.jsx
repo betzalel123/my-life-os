@@ -23,7 +23,6 @@ import {
   Home,
   Smile,
   Dices,
-  Sparkles,
   Gamepad2,
 } from 'lucide-react';
 
@@ -43,16 +42,6 @@ const DashboardSection = ({
   formatTime,
   timeLeft,
   setFocusTask,
-  setRewardSuggestion,
-  setTimerMode,
-  prepSteps,
-  currentPrepStep,
-  completeStep,
-  getPrepIcon,
-  allPrepDone,
-  startWorkMode,
-  transitionSteps,
-  openHelper,
   tasks,
   energyLevel,
   updateEnergyLevel,
@@ -78,12 +67,13 @@ const DashboardSection = ({
   balance,
   expenses,
   updateActiveTab,
-  houseChores,
+  houseChores = [],
   newChore,
   setNewChore,
   addChore,
   toggleChore,
   deleteChore,
+  openHelper,
 }) => {
   if (activeTab !== 'dashboard') return null;
 
@@ -115,7 +105,7 @@ const DashboardSection = ({
           />
 
           {(!(isFocusActive || activeHabitStack) || isTimerMinimized) ? (
-            <div className="relative z-10 flex items-center justify-between h-full px-4 animate-in fade-in slide-in-from-top-2">
+            <div className="relative z-10 flex items-center justify-between h-full px-4">
               <div className="flex items-center gap-4">
                 <div
                   className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-lg animate-pulse ${
@@ -133,7 +123,7 @@ const DashboardSection = ({
                   {isTimerMinimized
                     ? timerMode === 'hyperfocus'
                       ? 'בצלילה עמוקה'
-                      : `בעבודה: ${focusTask?.text || activeHabitStack?.name}`
+                      : `בעבודה: ${focusTask?.text || activeHabitStack?.name || ''}`
                     : focusTask
                       ? `נבחרה משימה: ${focusTask.text}`
                       : 'מנוע המיקוד ממתין למשימה...'}
@@ -149,9 +139,9 @@ const DashboardSection = ({
                   <button
                     onClick={() => {
                       setIsFocusActive(true);
-                      startPrepare(focusTask);
+                      startPrepare(task);
                     }}
-                    className="bg-indigo-600 hover:bg-indigo-50 text-white hover:text-indigo-600 px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 shadow-lg animate-in zoom-in-50 duration-300 transition-colors"
+                    className="bg-indigo-600 hover:bg-indigo-50 text-white hover:text-indigo-600 px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 shadow-lg transition-colors"
                   >
                     <Zap size={14} fill="currentColor" />
                     התחל סשן מיקוד
@@ -169,56 +159,20 @@ const DashboardSection = ({
                   הרחב חזרה למעלה
                 </button>
               )}
-
-              {!focusTask && !isTimerMinimized && !isFocusActive && !activeHabitStack && timerMode !== 'hyperfocus' && (
-                <div className="text-white/30 font-mono text-xl">--:--</div>
-              )}
             </div>
           ) : (
-            <div className="relative z-10 flex flex-col gap-4 animate-in zoom-in-95 duration-500 h-full">
+            <div className="relative z-10 flex flex-col gap-4 h-full">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  {timerMode === 'prepare' && !activeHabitStack && (
-                    <span className="bg-indigo-500 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase flex items-center gap-2 animate-pulse">
-                      <Sparkles size={12} />
-                      הכנת AI
-                    </span>
-                  )}
-
-                  {activeHabitStack && (
-                    <span className="bg-amber-500 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase flex items-center gap-2 animate-pulse">
-                      <Sparkles size={12} />
-                      שגרה פעילה
-                    </span>
-                  )}
-
-                  {timerMode === 'work' && (
-                    <span className="bg-indigo-600 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase flex items-center gap-2">
-                      <Zap size={12} />
-                      עבודה עמוקה
-                    </span>
-                  )}
-
-                  {timerMode === 'hyperfocus' && (
-                    <span className="bg-fuchsia-600 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase flex items-center gap-2">
-                      <Gamepad2 size={12} />
-                      היפר-פוקוס פעיל
-                    </span>
-                  )}
-
-                  {timerMode === 'transition' && (
-                    <span className="bg-white/20 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase flex items-center gap-2 animate-pulse">
-                      <RotateCcw size={12} />
-                      נחיתה רכה
-                    </span>
-                  )}
+                  <span className="bg-indigo-600 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase flex items-center gap-2">
+                    <Zap size={12} />
+                    עבודה עמוקה
+                  </span>
 
                   <button
                     onClick={() => {
                       setFocusTask(null);
                       setIsFocusActive(false);
-                      setRewardSuggestion(null);
-                      setTimerMode('work');
                       setIsTimerMinimized(false);
                     }}
                     className="text-[10px] text-white/40 hover:text-white transition-colors underline mr-2"
@@ -232,133 +186,45 @@ const DashboardSection = ({
                 </div>
               </div>
 
-              {(timerMode === 'prepare' || activeHabitStack) ? (
-                <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-500 flex-1">
-                  <div>
-                    <h2 className="text-xl font-black italic">
-                      {activeHabitStack ? activeHabitStack.name : 'מכינים את המרחב...'}
-                    </h2>
-                    <p className="text-white/60 text-[10px] truncate">
-                      {activeHabitStack ? 'מבצעים את שלבי השגרה' : `הכנה למיקוד ב: ${focusTask?.text}`}
-                    </p>
-                  </div>
-
-                  {isAILoading ? (
-                    <div className="flex flex-col items-center justify-center py-12 gap-3 bg-white/5 rounded-3xl border border-white/10">
-                      <Loader2 className="animate-spin text-white/50" size={32} />
-                      <p className="text-xs font-bold text-white/70 animate-pulse uppercase tracking-widest">
-                        AI בונה תוכנית הכנה...
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {prepSteps.map((step, index) => {
-                        const isCurrent = index === currentPrepStep;
-                        const isPast = index < currentPrepStep;
-
-                        return (
-                          <button
-                            key={index}
-                            disabled={!isCurrent && !isPast}
-                            onClick={() => isCurrent && completeStep(index)}
-                            className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all border-2 text-right ${
-                              isCurrent
-                                ? 'bg-white/20 border-white/40 shadow-xl scale-[1.02]'
-                                : isPast
-                                  ? 'bg-emerald-500/20 border-emerald-500/30 opacity-50'
-                                  : 'bg-white/5 border-transparent opacity-30'
-                            }`}
-                          >
-                            <div
-                              className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                                isPast ? 'bg-emerald-500' : isCurrent ? 'bg-white/20 text-white' : 'bg-white/10'
-                              }`}
-                            >
-                              {isPast ? <CheckCircle2 size={16} /> : getPrepIcon(step)}
-                            </div>
-
-                            <p className={`font-bold text-xs flex-1 ${isCurrent ? 'text-white' : 'text-white/60'}`}>
-                              {index + 1}. {step.text}
-                            </p>
-
-                            {isCurrent && <ArrowRight className="text-white/80 animate-pulse" size={16} />}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {allPrepDone && (
-                    <button
-                      onClick={startWorkMode}
-                      className="w-full bg-white text-indigo-900 py-3 rounded-2xl font-black text-lg shadow-xl animate-bounce mt-4"
-                    >
-                      {activeHabitStack ? 'סיימתי את השגרה, מתחילים!' : 'אני מוכנה, בואו נתחיל!'}
-                    </button>
-                  )}
+              <div className="flex-1 flex flex-col justify-between py-2">
+                <div className="text-center mb-2">
+                  <h2 className="text-2xl font-black text-white leading-tight truncate px-4">
+                    <span className="ml-2 inline-block align-middle">{focusTask?.emoji}</span>
+                    {focusTask?.text || activeHabitStack?.name}
+                  </h2>
                 </div>
-              ) : timerMode === 'transition' ? (
-                <div className="flex-1 flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-500">
-                  <RotateCcw size={48} className="text-white/40 mb-4 animate-bounce" />
-                  <h2 className="text-2xl font-black italic mb-2">זמן לסיים ברוגע</h2>
-                  <p className="text-sm font-medium text-white/80 mb-8 text-center max-w-sm">
-                    הפוקוס נגמר. בואי לא נקטע את זה בחדות, הנה מה שעושים עכשיו:
-                  </p>
 
-                  <div className="space-y-3 w-full max-w-md">
-                    {transitionSteps.map((step, i) => (
-                      <div key={i} className="p-4 bg-white/10 border border-white/20 rounded-2xl flex items-center gap-3">
-                        <Circle size={16} className="text-white/50" />
-                        <span className="font-bold text-sm">{step}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <h2 className="text-[60px] font-mono font-black tracking-tighter mt-6 opacity-80">
+                <div className="flex flex-col items-center justify-center flex-1">
+                  <h2 className="text-[100px] font-mono font-black tracking-tighter tabular-nums leading-none drop-shadow-2xl">
                     {formatTime(timeLeft)}
                   </h2>
                 </div>
-              ) : (
-                <div className="flex-1 flex flex-col justify-between animate-in fade-in duration-500 py-2">
-                  <div className="text-center mb-2">
-                    <h2 className="text-2xl font-black text-white leading-tight truncate px-4">
-                      <span className="ml-2 inline-block align-middle">{focusTask?.emoji}</span>
-                      {focusTask?.text || activeHabitStack?.name}
-                    </h2>
-                  </div>
 
-                  <div className="flex flex-col items-center justify-center flex-1">
-                    <h2 className="text-[100px] font-mono font-black tracking-tighter tabular-nums leading-none drop-shadow-2xl">
-                      {formatTime(timeLeft)}
-                    </h2>
-                  </div>
-
-                  {timerMode === 'work' && isTimerRunning && (
-                    <div className="mb-8 flex justify-center">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openHelper();
-                        }}
-                        className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-6 py-3 rounded-full font-bold text-sm transition-all flex items-center gap-2 shadow-lg active:scale-95 group"
-                      >
-                        <MessageCircle size={18} className="text-indigo-300 group-hover:scale-110 transition-transform" />
-                        נתקעתי, אפשר עזרה?
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="flex justify-center gap-4 mt-auto pb-2">
+                {timerMode === 'work' && isTimerRunning && (
+                  <div className="mb-8 flex justify-center">
                     <button
-                      onClick={() => setIsTimerMinimized(true)}
-                      className="px-6 py-3 rounded-[2rem] bg-white/10 hover:bg-white/20 font-black text-sm transition-colors border border-white/20 flex items-center gap-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openHelper?.();
+                      }}
+                      className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-6 py-3 rounded-full font-bold text-sm transition-all flex items-center gap-2 shadow-lg active:scale-95"
                     >
-                      <ChevronUp size={18} />
-                      מזער
+                      <MessageCircle size={18} className="text-indigo-300" />
+                      נתקעתי, אפשר עזרה?
                     </button>
                   </div>
+                )}
+
+                <div className="flex justify-center gap-4 mt-auto pb-2">
+                  <button
+                    onClick={() => setIsTimerMinimized(true)}
+                    className="px-6 py-3 rounded-[2rem] bg-white/10 hover:bg-white/20 font-black text-sm transition-colors border border-white/20 flex items-center gap-2"
+                  >
+                    <ChevronUp size={18} />
+                    מזער
+                  </button>
                 </div>
-              )}
+              </div>
             </div>
           )}
         </section>
@@ -386,13 +252,7 @@ const DashboardSection = ({
                         : 'text-slate-400 hover:bg-white hover:text-slate-600'
                     }`}
                   >
-                    {lvl === 'low' ? (
-                      <BatteryLow size={12} />
-                    ) : lvl === 'medium' ? (
-                      <BatteryMedium size={12} />
-                    ) : (
-                      <BatteryFull size={12} />
-                    )}
+                    {lvl === 'low' ? <BatteryLow size={12} /> : lvl === 'medium' ? <BatteryMedium size={12} /> : <BatteryFull size={12} />}
                     <span className="text-[10px] font-black">
                       {lvl === 'low' ? 'נמוכה' : lvl === 'medium' ? 'בינונית' : 'גבוהה'}
                     </span>
@@ -406,7 +266,6 @@ const DashboardSection = ({
                 onClick={handleSmartRoulette}
                 disabled={isSorting}
                 className="p-2 text-indigo-600 hover:bg-white rounded-2xl transition-all disabled:opacity-50"
-                title="רולטת החלטות - תחליט בשבילי"
               >
                 {isSorting ? <Loader2 size={16} className="animate-spin" /> : <Dices size={16} />}
               </button>
@@ -415,9 +274,8 @@ const DashboardSection = ({
                 onClick={handleSmartReorder}
                 disabled={isSorting}
                 className="p-2 text-amber-500 hover:bg-white rounded-2xl transition-all"
-                title="סידור חכם"
               >
-                <Sparkles size={16} />
+                <RotateCcw size={16} />
               </button>
             </div>
           </div>
@@ -442,12 +300,6 @@ const DashboardSection = ({
           </form>
 
           <div className="space-y-3">
-            {tasks.filter((t) => !t.completed && (t.energyRequired === energyLevel || t.energyRequired === 'analyzing')).length === 0 && (
-              <div className="p-10 text-center bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200">
-                <p className="text-slate-400 font-bold italic text-sm">אין משימות לרמת האנרגיה הזו. אולי זה זמן לנוח? ☕</p>
-              </div>
-            )}
-
             {tasks
               .filter((t) => !t.completed && (t.energyRequired === energyLevel || t.energyRequired === 'analyzing'))
               .map((task) => (
@@ -467,16 +319,7 @@ const DashboardSection = ({
                       {task.energyRequired === 'analyzing' ? (
                         <Loader2 className="animate-spin text-indigo-400" size={22} />
                       ) : (
-                        <Circle
-                          className={`hover:text-indigo-500 transition-colors ${
-                            task.energyRequired === 'low'
-                              ? 'text-rose-500'
-                              : task.energyRequired === 'medium'
-                                ? 'text-amber-500'
-                                : 'text-emerald-500'
-                          }`}
-                          size={22}
-                        />
+                        <Circle size={22} />
                       )}
                     </button>
 
@@ -509,7 +352,7 @@ const DashboardSection = ({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              openHelper();
+                              openHelper?.();
                             }}
                             className="whitespace-nowrap text-[10px] font-black text-indigo-600 bg-white border border-indigo-100 px-3 py-1.5 rounded-full shadow-sm flex items-center gap-2 hover:bg-indigo-50 transition-colors"
                           >
@@ -521,27 +364,12 @@ const DashboardSection = ({
                     </div>
 
                     <div className="flex gap-1 flex-shrink-0">
-                      {focusTask?.id === task.id && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setFocusTask(null);
-                            setIsFocusActive(false);
-                            setRewardSuggestion(null);
-                          }}
-                          className="p-1.5 text-indigo-400 hover:bg-white rounded-lg transition-all border border-indigo-100"
-                        >
-                          <ChevronUp size={16} />
-                        </button>
-                      )}
-
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleTaskRewrite(task.id, task.text);
                         }}
                         className="p-1.5 text-slate-300 hover:text-indigo-600 transition-colors"
-                        title="פשט משימה"
                       >
                         <AlignLeft size={18} />
                       </button>
@@ -552,43 +380,26 @@ const DashboardSection = ({
                           updateTasks(tasks.filter((t) => t.id !== task.id));
                         }}
                         className="p-1.5 text-slate-300 hover:text-rose-500 transition-colors"
-                        title="מחק"
                       >
                         <Trash2 size={18} />
                       </button>
                     </div>
                   </div>
 
-                  {focusTask?.id === task.id && (
-                    <div className="mt-3">
-                      {isBreakingDown === task.id ? (
-                        <div className="mr-8 p-3 bg-white/40 rounded-xl border border-dashed border-indigo-200 flex items-center gap-3 animate-pulse">
-                          <Loader2 className="animate-spin text-indigo-400" size={16} />
-                          <span className="text-[11px] font-bold text-indigo-500 italic">ה-AI מפרק את המשימה לשלבים קטנים...</span>
+                  {focusTask?.id === task.id && task.subTasks && task.subTasks.length > 0 && (
+                    <div className="mt-3 mr-8 space-y-1.5 border-r-2 border-indigo-100/50 pr-4">
+                      {task.subTasks.map((st) => (
+                        <div
+                          key={st.id}
+                          onClick={() => toggleSubTask(task.id, st.id)}
+                          className="flex items-center gap-3 cursor-pointer"
+                        >
+                          {st.completed ? <CheckCircle2 className="text-emerald-500" size={15} /> : <Circle className="text-slate-400" size={15} />}
+                          <span className={`text-[13px] font-medium ${st.completed ? 'line-through text-slate-300' : 'text-slate-600'}`}>
+                            {st.text}
+                          </span>
                         </div>
-                      ) : (
-                        task.subTasks &&
-                        task.subTasks.length > 0 && (
-                          <div className="mr-8 space-y-1.5 border-r-2 border-indigo-100/50 pr-4">
-                            {task.subTasks.map((st) => (
-                              <div
-                                key={st.id}
-                                onClick={() => toggleSubTask(task.id, st.id)}
-                                className="flex items-center gap-3 cursor-pointer group/sub"
-                              >
-                                {st.completed ? (
-                                  <CheckCircle2 className="text-emerald-500" size={15} />
-                                ) : (
-                                  <Circle className="text-slate-400 group-hover/sub:text-indigo-500 transition-colors" size={15} />
-                                )}
-                                <span className={`text-[13px] font-medium transition-all ${st.completed ? 'line-through text-slate-300' : 'text-slate-600'}`}>
-                                  {st.text}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )
-                      )}
+                      ))}
                     </div>
                   )}
                 </div>
@@ -606,9 +417,9 @@ const DashboardSection = ({
             <button
               onClick={processBrainDump}
               disabled={isAILoading || !brainDump.trim()}
-              className="px-4 py-2 bg-amber-500 text-white rounded-2xl text-xs font-black shadow-md hover:bg-amber-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-4 py-2 bg-amber-500 text-white rounded-2xl text-xs font-black shadow-md hover:bg-amber-600 transition-all disabled:opacity-50"
             >
-              {isAILoading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+              {isAILoading ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
               הפוך למשימות
             </button>
           </div>
@@ -617,7 +428,7 @@ const DashboardSection = ({
             value={brainDump}
             onChange={(e) => updateBrainDump(e.target.value)}
             placeholder="פרוקי פה הכל..."
-            className="w-full h-44 bg-slate-50 border-none rounded-[2rem] p-5 text-sm font-medium resize-none outline-none focus:ring-2 focus:ring-amber-200 transition-all custom-scrollbar"
+            className="w-full h-44 bg-slate-50 border-none rounded-[2rem] p-5 text-sm font-medium resize-none outline-none focus:ring-2 focus:ring-amber-200 transition-all"
           />
         </section>
       </div>
@@ -755,7 +566,9 @@ const DashboardSection = ({
 
           <div className="space-y-2">
             {houseChores.length === 0 && (
-              <div className="text-center py-6 text-slate-400 font-bold italic text-sm">אין מטלות בית כרגע ✨</div>
+              <div className="text-center py-6 text-slate-400 font-bold italic text-sm">
+                אין מטלות בית כרגע ✨
+              </div>
             )}
 
             {houseChores.slice(0, 5).map((chore) => (
