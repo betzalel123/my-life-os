@@ -45,6 +45,21 @@ const getFallbackDopamineMenu = (energyLevel) => {
   ];
 };
 
+const getFallbackBrainDumpTasks = (text) =>
+  String(text || '')
+    .split(/\n+|•|·|▪|●|\-|;|\.|,/) 
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 8)
+    .map((taskText, index) => ({
+      id: Date.now() + index + Math.random(),
+      text: taskText,
+      completed: false,
+      energyRequired: 'medium',
+      subTasks: [],
+      emoji: getLocalEmoji(taskText),
+    }));
+
 export default function App() {
   const [isAppReady, setIsAppReady] = useState(false);
 
@@ -292,6 +307,8 @@ Task: "${taskText}"`,
     const text = String(brainDump || '').trim();
     if (!text) return;
 
+    const fallbackTasks = getFallbackBrainDumpTasks(text);
+
     try {
       const response = await fetch('/api/gemini', {
         method: 'POST',
@@ -313,9 +330,8 @@ ${text}`,
       const result = await response.json();
       const extracted = Array.isArray(result?.extractedTasks) ? result.extractedTasks : [];
 
-      if (extracted.length > 0) {
-        updateTasks((prev) => [
-          ...extracted.map((t) => ({
+      const nextTasks = extracted.length > 0
+        ? extracted.map((t) => ({
             id: Date.now() + Math.random(),
             text: t.text,
             completed: false,
@@ -324,13 +340,18 @@ ${text}`,
               : 'medium',
             subTasks: [],
             emoji: t.emoji || getLocalEmoji(t.text),
-          })),
-          ...prev,
-        ]);
+          }))
+        : fallbackTasks;
+
+      if (nextTasks.length > 0) {
+        updateTasks((prev) => [...nextTasks, ...prev]);
         setBrainDump('');
       }
     } catch {
-      // אם יש כשל, לא מוסיפים משימות – המשתמש יוכל לנסות שוב
+      if (fallbackTasks.length > 0) {
+        updateTasks((prev) => [...fallbackTasks, ...prev]);
+        setBrainDump('');
+      }
     }
   };
 
