@@ -21,10 +21,10 @@ const navItems = [
 
 export default function BottomNav({ activeTab, setActiveTab }) {
   return (
-    <div className="fixed bottom-5 left-1/2 z-50 w-full max-w-[1120px] -translate-x-1/2 px-1 sm:px-3">
+    <div className="fixed bottom-5 left-1/2 z-50 w-full max-w-[1080px] -translate-x-1/2 px-2">
       <nav
         dir="rtl"
-        className="flex items-center justify-between rounded-[2.8rem] border border-white/10 bg-[#172544] px-4 py-3 shadow-[0_20px_50px_rgba(15,23,42,0.35)]"
+        className="flex items-center justify-between rounded-[2.6rem] border border-white/10 bg-[#172544] px-6 py-2 shadow-[0_18px_40px_rgba(15,23,42,0.28)]"
       >
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -34,19 +34,19 @@ export default function BottomNav({ activeTab, setActiveTab }) {
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`flex min-w-[110px] flex-col items-center justify-center gap-2 rounded-[2rem] transition-all duration-300 ${
+              className={`flex flex-col items-center justify-center gap-2 rounded-[2rem] transition-all duration-300 ${
                 isActive
-                  ? 'bg-[#5b4cf6] text-white shadow-[0_10px_30px_rgba(91,76,246,0.35)] h-[118px] px-8'
-                  : 'h-[118px] px-4 text-slate-400 hover:text-slate-200'
+                  ? 'h-[126px] min-w-[150px] bg-[#5b4cf6] px-8 text-white shadow-[0_10px_30px_rgba(91,76,246,0.32)]'
+                  : 'h-[126px] min-w-[108px] px-4 text-slate-400 hover:text-slate-200'
               }`}
             >
               <Icon
-                size={31}
+                size={30}
                 strokeWidth={1.9}
                 className={isActive ? 'text-white' : 'text-slate-400'}
               />
               <span
-                className={`text-[15px] font-black tracking-tight ${
+                className={`text-[15px] font-black ${
                   isActive ? 'text-white' : 'text-slate-400'
                 }`}
               >
