@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React from 'react';
 import {
   ListTodo,
   BatteryLow,
@@ -21,21 +21,14 @@ import {
   Coffee,
   Play,
   Pause,
-  Target,
-  Zap,
-  Gamepad2,
-  ChevronUp,
-  ArrowRight,
   CheckCircle2,
-  MessageCircle,
+  ChevronUp,
 } from 'lucide-react';
 
 const formatTime = (seconds) => {
-  const mins = Math.floor((seconds || 0) / 60);
-  const secs = (seconds || 0) % 60;
-  return `${mins.toString().padStart(2, '0')}:${secs
-    .toString()
-    .padStart(2, '0')}`;
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 };
 
 export default function DashboardSection({
@@ -57,23 +50,13 @@ export default function DashboardSection({
   expenses,
   balance,
   currentTime,
+  selectedTaskId,
+  onSelectTask,
+  toggleSubTask,
+  isBreakingDownTaskId,
 }) {
-  const safeTasks = Array.isArray(tasks) ? tasks : [];
-
-  const [focusTaskId, setFocusTaskId] = useState(null);
-  const [isFocusActive, setIsFocusActive] = useState(false);
-  const [isTimerMinimized, setIsTimerMinimized] = useState(false);
-  const [timerMode, setTimerMode] = useState('work');
-
-  const focusTask = useMemo(
-    () => safeTasks.find((t) => t.id === focusTaskId) || null,
-    [safeTasks, focusTaskId]
-  );
-
-  const visibleTasks = safeTasks.filter(
-    (t) =>
-      !t.completed &&
-      (t.energyRequired === energyLevel || t.energyRequired === 'analyzing')
+  const visibleTasks = tasks.filter(
+    (t) => !t.completed && (t.energyRequired === energyLevel || t.energyRequired === 'analyzing')
   );
 
   const activeScheduleItem = {
@@ -92,196 +75,51 @@ export default function DashboardSection({
     ? Math.round((choresCompleted / houseChores.length) * 100)
     : 0;
 
-  const handleSelectTask = (task) => {
-    setFocusTaskId(task.id);
-    setIsFocusActive(false);
-    setIsTimerMinimized(false);
-    setTimerMode('work');
-  };
-
-  const startFocusSession = () => {
-    if (!focusTask) return;
-    setIsFocusActive(true);
-    setIsTimerMinimized(false);
-    setTimerMode('work');
-    setIsTimerRunning(true);
-  };
-
-  const cancelFocus = () => {
-    setFocusTaskId(null);
-    setIsFocusActive(false);
-    setIsTimerMinimized(false);
-    setTimerMode('work');
-    setIsTimerRunning(false);
-  };
-
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-top-4 duration-700">
       <div className="lg:col-span-2 space-y-8">
-        <section
-          className={`text-white shadow-2xl relative overflow-hidden transition-all duration-700 ease-in-out ${
-            timerMode === 'hyperfocus'
-              ? 'bg-fuchsia-900'
-              : timerMode === 'transition'
-              ? 'bg-indigo-400'
-              : 'bg-slate-900'
-          } ${
-            ((isFocusActive && focusTask) || focusTask) && !isTimerMinimized
-              ? 'p-6 rounded-[3rem] opacity-100 min-h-[350px]'
-              : 'p-4 rounded-2xl opacity-80 h-20'
-          }`}
-        >
-          <div
-            className={`absolute inset-0 bg-white/5 pointer-events-none transition-opacity duration-1000 ${
-              isTimerRunning && !isTimerMinimized ? 'opacity-20' : 'opacity-0'
-            }`}
-          />
-
-          {(!(isFocusActive && focusTask) || isTimerMinimized) ? (
-            <div className="relative z-10 flex items-center justify-between h-full px-4">
-              <div className="flex items-center gap-4">
-                <div
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-lg animate-pulse ${
-                    timerMode === 'hyperfocus' ? 'bg-fuchsia-600' : 'bg-indigo-600'
-                  }`}
-                >
-                  {timerMode === 'hyperfocus' ? (
-                    <Gamepad2 className="text-white" size={16} />
-                  ) : (
-                    <Target className="text-white" size={16} />
-                  )}
-                </div>
-
-                <h2 className="text-sm font-black uppercase tracking-widest opacity-60 italic">
-                  {isTimerMinimized
-                    ? timerMode === 'hyperfocus'
-                      ? 'בצלילה עמוקה'
-                      : `בעבודה: ${focusTask?.text || 'מנוע המיקוד'}`
-                    : focusTask
-                    ? `נבחרה משימה: ${focusTask.text}`
-                    : 'מנוע המיקוד ממתין למשימה...'}
-                </h2>
+        <section className="text-white shadow-2xl relative overflow-hidden transition-all duration-700 ease-in-out bg-slate-900 p-6 rounded-[3rem] min-h-[220px]">
+          <div className="absolute inset-0 bg-white/5 pointer-events-none" />
+          <div className="relative z-10 flex flex-col gap-4 h-full">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="bg-indigo-600 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase flex items-center gap-2">
+                  <Sparkles size={12} />
+                  פוקוס
+                </span>
               </div>
 
-              {focusTask && !isFocusActive && timerMode !== 'hyperfocus' && (
-                <button
-                  type="button"
-                  onClick={startFocusSession}
-                  className="bg-indigo-600 hover:bg-indigo-50 text-white hover:text-indigo-600 px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 shadow-lg transition-colors"
-                >
-                  <Zap size={14} fill="currentColor" />
-                  התחל סשן מיקוד
-                </button>
-              )}
-
-              {isTimerMinimized && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsTimerMinimized(false);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className="text-white/60 hover:text-white text-[10px] uppercase font-black tracking-widest bg-white/10 px-4 py-2 rounded-xl transition-colors"
-                >
-                  הרחב חזרה למעלה
-                </button>
-              )}
-
-              {!focusTask && !isTimerMinimized && (
-                <div className="text-white/30 font-mono text-xl">--:--</div>
-              )}
-            </div>
-          ) : (
-            <div className="relative z-10 flex flex-col gap-4 h-full">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {timerMode === 'work' && (
-                    <span className="bg-indigo-600 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase flex items-center gap-2">
-                      <Zap size={12} />
-                      עבודה עמוקה
-                    </span>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={cancelFocus}
-                    className="text-[10px] text-white/40 hover:text-white transition-colors underline mr-2"
-                  >
-                    ביטול טיימר
-                  </button>
-                </div>
-
-                <div className="text-xl font-mono font-black text-white/80 tabular-nums bg-white/10 px-4 py-1 rounded-xl">
-                  {formatTime(timeLeft)}
-                </div>
-              </div>
-
-              <div className="flex-1 flex flex-col justify-between py-2">
-                <div className="text-center mb-2">
-                  <h2 className="text-2xl font-black text-white leading-tight truncate px-4">
-                    <span className="ml-2 inline-block align-middle">
-                      {focusTask?.emoji || '📝'}
-                    </span>
-                    {focusTask?.text || 'משימת פוקוס'}
-                  </h2>
-                </div>
-
-                <div className="flex flex-col items-center justify-center flex-1">
-                  <h2 className="text-[100px] font-mono font-black tracking-tighter tabular-nums leading-none drop-shadow-2xl">
-                    {formatTime(timeLeft)}
-                  </h2>
-                </div>
-
-                {timerMode === 'work' && isTimerRunning && (
-                  <div className="mb-8 flex justify-center">
-                    <button
-                      type="button"
-                      className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-6 py-3 rounded-full font-bold text-sm transition-all flex items-center gap-2 shadow-lg active:scale-95 group"
-                    >
-                      <MessageCircle
-                        size={18}
-                        className="text-indigo-300 group-hover:scale-110 transition-transform"
-                      />
-                      נתקעתי, אפשר עזרה?
-                    </button>
-                  </div>
-                )}
-
-                <div className="flex justify-center gap-4 mt-auto pb-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsTimerRunning(!isTimerRunning)}
-                    className={`px-8 py-3 rounded-[2rem] font-black text-sm flex items-center gap-3 shadow-xl active:scale-95 transition-all ${
-                      isTimerRunning
-                        ? 'bg-amber-500 text-amber-950'
-                        : 'bg-emerald-500 text-emerald-950'
-                    }`}
-                  >
-                    {isTimerRunning ? (
-                      <Pause size={18} fill="currentColor" />
-                    ) : (
-                      <Play size={18} fill="currentColor" />
-                    )}
-                    {isTimerRunning ? 'השהה' : 'המשך'}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsTimerMinimized(true);
-                      setTimeout(() => {
-                        window.scrollTo({ top: 350, behavior: 'smooth' });
-                      }, 100);
-                    }}
-                    className="px-6 py-3 rounded-[2rem] bg-white/10 hover:bg-white/20 font-black text-sm transition-colors border border-white/20 flex items-center gap-2"
-                  >
-                    <ChevronUp size={18} />
-                    מזער
-                  </button>
-                </div>
+              <div className="text-xl font-mono font-black text-white/80 tabular-nums bg-white/10 px-4 py-1 rounded-xl">
+                {formatTime(timeLeft)}
               </div>
             </div>
-          )}
+
+            <div className="text-center mb-2">
+              <h2 className="text-2xl font-black text-white leading-tight truncate px-4">
+                מנוע המיקוד ממתין למשימה...
+              </h2>
+            </div>
+
+            <div className="flex flex-col items-center justify-center flex-1">
+              <h2 className="text-[72px] md:text-[100px] font-mono font-black tracking-tighter tabular-nums leading-none drop-shadow-2xl">
+                {formatTime(timeLeft)}
+              </h2>
+            </div>
+
+            <div className="flex justify-center gap-4 mt-auto pb-2">
+              <button
+                onClick={() => setIsTimerRunning(!isTimerRunning)}
+                className={`px-8 py-3 rounded-[2rem] font-black text-sm flex items-center gap-3 shadow-xl active:scale-95 transition-all ${
+                  isTimerRunning
+                    ? 'bg-amber-500 text-amber-950'
+                    : 'bg-emerald-500 text-emerald-950'
+                }`}
+              >
+                {isTimerRunning ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
+                {isTimerRunning ? 'השהה' : 'המשך'}
+              </button>
+            </div>
+          </div>
         </section>
 
         <section className="bg-white p-8 rounded-[3rem] shadow-sm border border-slate-200/50 overflow-hidden">
@@ -376,154 +214,143 @@ export default function DashboardSection({
               </div>
             )}
 
-            {visibleTasks.map((task) => (
-              <div
-                key={task.id}
-                className={`rounded-[2rem] border-2 transition-all group ${
-                  focusTask?.id === task.id
-                    ? 'bg-indigo-50 border-indigo-500 shadow-sm p-4'
-                    : 'border-transparent hover:bg-slate-50 p-3'
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setTasks((prev) =>
-                        prev.map((t) =>
-                          t.id === task.id ? { ...t, completed: true } : t
-                        )
-                      )
-                    }
-                    className="transition-transform active:scale-75"
-                  >
-                    {task.energyRequired === 'analyzing' ? (
-                      <Loader2 className="animate-spin text-indigo-400" size={22} />
-                    ) : (
-                      <Circle
-                        className={`hover:text-indigo-500 transition-colors ${
-                          task.energyRequired === 'low'
-                            ? 'text-rose-500'
-                            : task.energyRequired === 'medium'
-                            ? 'text-amber-500'
-                            : 'text-emerald-500'
-                        }`}
-                        size={22}
-                      />
-                    )}
-                  </button>
+            {visibleTasks.map((task) => {
+              const isSelected = selectedTaskId === task.id;
 
-                  <div
-                    className="flex-1 cursor-pointer overflow-hidden"
-                    onClick={() => handleSelectTask(task)}
-                  >
-                    <span
-                      className={`font-bold text-base block truncate ${
-                        focusTask?.id === task.id ? 'text-indigo-900' : 'text-slate-800'
-                      }`}
-                    >
-                      <span className="ml-2 inline-block align-middle">
-                        {task.emoji || '📝'}
-                      </span>
-                      {task.text}
-                    </span>
-
-                    {focusTask?.id === task.id && !isFocusActive && (
-                      <div className="flex gap-2 mt-3 overflow-x-auto pb-1 no-scrollbar">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSelectTask(task);
-                            startFocusSession();
-                          }}
-                          className="whitespace-nowrap text-[10px] font-black text-white bg-indigo-600 px-3 py-1.5 rounded-full shadow-sm flex items-center gap-2 hover:scale-105 transition-all"
-                        >
-                          <ArrowRight size={10} />
-                          כניסה לריכוז
-                        </button>
-
-                        <button
-                          type="button"
-                          className="whitespace-nowrap text-[10px] font-black text-indigo-600 bg-white border border-indigo-100 px-3 py-1.5 rounded-full shadow-sm flex items-center gap-2 hover:bg-indigo-50 transition-colors"
-                        >
-                          <MessageCircle size={10} />
-                          קשה לי להתחיל
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex gap-1 flex-shrink-0">
-                    {focusTask?.id === task.id && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setFocusTaskId(null);
-                          setIsFocusActive(false);
-                        }}
-                        className="p-1.5 text-indigo-400 hover:bg-white rounded-lg transition-all border border-indigo-100"
-                      >
-                        <ChevronUp size={16} />
-                      </button>
-                    )}
-
-                    <button
-                      type="button"
-                      className="p-1.5 text-slate-300 hover:text-indigo-600 transition-colors"
-                      title="פשט משימה"
-                    >
-                      <AlignLeft size={18} />
-                    </button>
-
+              return (
+                <div
+                  key={task.id}
+                  className={`rounded-[2rem] border-2 transition-all group ${
+                    isSelected
+                      ? 'bg-indigo-50 border-indigo-500 shadow-sm p-4'
+                      : 'border-transparent hover:bg-slate-50 p-3'
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
                     <button
                       type="button"
                       onClick={() =>
-                        setTasks((prev) => prev.filter((t) => t.id !== task.id))
+                        setTasks((prev) =>
+                          prev.map((t) =>
+                            t.id === task.id ? { ...t, completed: true } : t
+                          )
+                        )
                       }
-                      className="p-1.5 text-slate-300 hover:text-rose-500 transition-colors"
-                      title="מחק"
+                      className="transition-transform active:scale-75"
                     >
-                      <Trash2 size={18} />
+                      {task.energyRequired === 'analyzing' ? (
+                        <Loader2 className="animate-spin text-indigo-400" size={22} />
+                      ) : (
+                        <Circle
+                          className={`hover:text-indigo-500 transition-colors ${
+                            task.energyRequired === 'low'
+                              ? 'text-rose-500'
+                              : task.energyRequired === 'medium'
+                              ? 'text-amber-500'
+                              : 'text-emerald-500'
+                          }`}
+                          size={22}
+                        />
+                      )}
                     </button>
-                  </div>
-                </div>
 
-                {focusTask?.id === task.id &&
-                  task.subTasks &&
-                  task.subTasks.length > 0 && (
+                    <div
+                      className="flex-1 overflow-hidden cursor-pointer"
+                      onClick={() => onSelectTask(task)}
+                    >
+                      <span
+                        className={`font-bold text-base block truncate ${
+                          isSelected ? 'text-indigo-900' : 'text-slate-800'
+                        }`}
+                      >
+                        <span className="ml-2 inline-block align-middle">
+                          {task.emoji || '📝'}
+                        </span>
+                        {task.text}
+                      </span>
+                    </div>
+
+                    <div className="flex gap-1 flex-shrink-0">
+                      {isSelected && (
+                        <button
+                          type="button"
+                          onClick={() => onSelectTask(task)}
+                          className="p-1.5 text-indigo-400 hover:bg-white rounded-lg transition-all border border-indigo-100"
+                          title="סגור"
+                        >
+                          <ChevronUp size={16} />
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        className="p-1.5 text-slate-300 hover:text-indigo-600 transition-colors"
+                        title="פשט משימה"
+                      >
+                        <AlignLeft size={18} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setTasks((prev) => prev.filter((t) => t.id !== task.id))
+                        }
+                        className="p-1.5 text-slate-300 hover:text-rose-500 transition-colors"
+                        title="מחק"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {isSelected && (
                     <div className="mt-3">
-                      <div className="mr-8 space-y-1.5 border-r-2 border-indigo-100/50 pr-4">
-                        {task.subTasks.map((st) => (
-                          <div
-                            key={st.id}
-                            className="flex items-center gap-3 cursor-pointer group/sub"
-                          >
-                            {st.completed ? (
-                              <CheckCircle2 className="text-emerald-500" size={15} />
-                            ) : (
-                              <Circle
-                                className="text-slate-400 group-hover/sub:text-indigo-500 transition-colors"
-                                size={15}
-                              />
-                            )}
-                            <span
-                              className={`text-[13px] font-medium transition-all ${
-                                st.completed
-                                  ? 'line-through text-slate-300'
-                                  : 'text-slate-600'
-                              }`}
-                            >
-                              {st.text}
-                            </span>
+                      {isBreakingDownTaskId === task.id ? (
+                        <div className="mr-8 p-3 bg-white/40 rounded-xl border border-dashed border-indigo-200 flex items-center gap-3 animate-pulse">
+                          <Loader2 className="animate-spin text-indigo-400" size={16} />
+                          <span className="text-[11px] font-bold text-indigo-500 italic">
+                            ה-AI מפרק את המשימה לשלבים קטנים...
+                          </span>
+                        </div>
+                      ) : (
+                        task.subTasks &&
+                        task.subTasks.length > 0 && (
+                          <div className="mr-8 space-y-1.5 border-r-2 border-indigo-100/50 pr-4">
+                            {task.subTasks.map((st) => (
+                              <div
+                                key={st.id}
+                                onClick={() => toggleSubTask(task.id, st.id)}
+                                className="flex items-center gap-3 cursor-pointer group/sub"
+                              >
+                                {st.completed ? (
+                                  <CheckCircle2
+                                    className="text-emerald-500"
+                                    size={15}
+                                  />
+                                ) : (
+                                  <Circle
+                                    className="text-slate-400 group-hover/sub:text-indigo-500 transition-colors"
+                                    size={15}
+                                  />
+                                )}
+                                <span
+                                  className={`text-[13px] font-medium transition-all ${
+                                    st.completed
+                                      ? 'line-through text-slate-300'
+                                      : 'text-slate-600'
+                                  }`}
+                                >
+                                  {st.text}
+                                </span>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
+                        )
+                      )}
                     </div>
                   )}
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
         </section>
 
