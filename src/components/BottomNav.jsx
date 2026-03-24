@@ -1,42 +1,60 @@
 import React from 'react';
 import {
-  Briefcase,
-  GraduationCap,
-  Compass,
-  Calendar,
-  Wallet,
-  ListTodo,
   LayoutDashboard,
+  ListTodo,
+  Wallet,
+  Calendar,
+  Compass,
+  GraduationCap,
+  Briefcase,
 } from 'lucide-react';
 
-const items = [
-  { id: 'tools', icon: Briefcase, label: 'כלים' },
-  { id: 'skills', icon: GraduationCap, label: 'ספר' },
-  { id: 'vision', icon: Compass, label: 'חזון' },
-  { id: 'schedule', icon: Calendar, label: 'לו"ז' },
-  { id: 'finance', icon: Wallet, label: 'כסף' },
-  { id: 'tasks', icon: ListTodo, label: 'משימות' },
-  { id: 'dashboard', icon: LayoutDashboard, label: 'ראשי' },
+const navItems = [
+  { id: 'tools', label: 'כלים', icon: Briefcase },
+  { id: 'skills', label: 'ספר', icon: GraduationCap },
+  { id: 'vision', label: 'חזון', icon: Compass },
+  { id: 'schedule', label: 'לו"ז', icon: Calendar },
+  { id: 'finance', label: 'כסף', icon: Wallet },
+  { id: 'tasks', label: 'משימות', icon: ListTodo },
+  { id: 'dashboard', label: 'ראשי', icon: LayoutDashboard },
 ];
 
 export default function BottomNav({ activeTab, setActiveTab }) {
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-[780px] px-4">
-      <nav className="bg-[#182544] text-white rounded-[2.35rem] shadow-2xl px-5 py-3 flex items-center justify-between border border-white/5">
-        {items.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setActiveTab(item.id)}
-            className={`flex flex-col items-center justify-center gap-1 px-4 py-2.5 rounded-[1.8rem] transition-all min-w-[76px] ${
-              activeTab === item.id
-                ? 'bg-indigo-600 text-white shadow-lg scale-105'
-                : 'text-slate-500 hover:text-slate-300'
-            }`}
-          >
-            <item.icon size={22} />
-            <span className="text-[14px] font-black">{item.label}</span>
-          </button>
-        ))}
+    <div className="fixed bottom-5 left-1/2 z-50 w-full max-w-[1120px] -translate-x-1/2 px-1 sm:px-3">
+      <nav
+        dir="rtl"
+        className="flex items-center justify-between rounded-[2.8rem] border border-white/10 bg-[#172544] px-4 py-3 shadow-[0_20px_50px_rgba(15,23,42,0.35)]"
+      >
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = activeTab === item.id;
+
+          return (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`flex min-w-[110px] flex-col items-center justify-center gap-2 rounded-[2rem] transition-all duration-300 ${
+                isActive
+                  ? 'bg-[#5b4cf6] text-white shadow-[0_10px_30px_rgba(91,76,246,0.35)] h-[118px] px-8'
+                  : 'h-[118px] px-4 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Icon
+                size={31}
+                strokeWidth={1.9}
+                className={isActive ? 'text-white' : 'text-slate-400'}
+              />
+              <span
+                className={`text-[15px] font-black tracking-tight ${
+                  isActive ? 'text-white' : 'text-slate-400'
+                }`}
+              >
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
       </nav>
     </div>
   );
